@@ -31,3 +31,8 @@ Comma-separated keywords are combined with OR. Feeds refresh on opening a topic 
 
 The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. On your radar is a compact horizontal topic strip instead of a sidebar.
 
+
+## Settings backup
+
+Use **Save settings** in the header to download a dated JSON file containing your topics, keyword lists, saved article URLs/titles/excerpts, and font size. Keep it in a folder on your local drive. Use **Restore settings** to choose that file after clearing browser data or on another device. A preview shows the counts and asks before replacing this browser's library. Invalid files are rejected without changing settings. Backups are handled locally in the browser, not uploaded. The browser controls the download destination.
+
