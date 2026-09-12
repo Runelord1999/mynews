@@ -5,9 +5,13 @@ globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.se
 const result=await build({entryPoints:['lib/browser-library.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const lib=await import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
 assert.equal(lib.readLibrary().topics.length,6);
-assert.equal(lib.readLibrary().sites.length,7);
-lib.writeLibrary({action:'sites',sites:lib.readLibrary().sites.filter(s=>s.name!=='Reuters')});
-assert.equal(lib.readLibrary().sites.length,6,'Removed starter must not reappear');
+assert.equal(lib.readLibrary().sites.length,3);
+lib.writeLibrary({action:'sites',sites:lib.readLibrary().sites.filter(s=>s.name!=='Futurism')});
+assert.equal(lib.readLibrary().sites.length,2,'Removed starter must not reappear');
+const current=lib.readLibrary();
+memory.set('mynews-library-v1',JSON.stringify({...current,starterSitesVersion:1,sites:[...current.sites,...['reuters.com','bbc.com','technologyreview.com','sciencenews.org'].map(host=>({name:host,url:'https://www.'+host+'/',searchUrl:''})),{name:'Custom',url:'https://example.org/',searchUrl:''}]}));
+assert.equal(lib.readLibrary().sites.length,3,'Migration removes paid defaults and preserves custom sites');
+assert.ok(lib.readLibrary().sites.some(s=>s.name==='Custom'));
 const article={id:'https://example.com/',url:'https://example.com/',title:'Saved story',excerpt:'An excerpt',source:'example.com',date:new Date().toISOString(),topic:'OpenAI'};
 lib.writeLibrary({action:'save',article});
 lib.writeLibrary({action:'save',article});

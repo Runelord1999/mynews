@@ -20,7 +20,7 @@ export function exportBackup(fontSize:number):string {
 }
 export function restoreBackup(backup:SettingsBackup) {
  const valid=parseBackup(JSON.stringify(backup));
- localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,starterSitesVersion:1}));
+ localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,starterSitesVersion:2}));
  return valid;
 }
 export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[]}{
@@ -30,6 +30,12 @@ export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[
   const hosts=new Set(state.sites.map(s=>new URL(s.url).hostname.replace(/^www\./,'')));
   state.sites=[...state.sites,...starterSites.filter(s=>!hosts.has(new URL(s.url).hostname.replace(/^www\./,'')))].slice(0,30);
   state.starterSitesVersion=1;
+  localStorage.setItem(key,JSON.stringify(state));
+ }
+ if((state.starterSitesVersion??0)<2){
+  const paidHosts=new Set(['reuters.com','bbc.com','technologyreview.com','sciencenews.org']);
+  state.sites=state.sites.filter(s=>!paidHosts.has(new URL(s.url).hostname.replace(/^www\./,'')));
+  state.starterSitesVersion=2;
   localStorage.setItem(key,JSON.stringify(state));
  }
  return state;
