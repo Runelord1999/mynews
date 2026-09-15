@@ -4,7 +4,7 @@ Public website: https://runelord1999.github.io/mynews/
 
 Mynews is a personal news reader with topic tabs, live headlines and excerpts, bookmarks, and manually added URLs. It starts with Trump, Anthropic, OpenAI, Singularity, AGI, and AI Governance.
 
-No account or ChatGPT sign-in is needed. Topics and saved articles are stored in this browser's local storage. They do not sync across devices or browsers; clearing site data removes them. Previously saved items on the private site are not copied automatically.
+No account or sign-in is needed. Topics and saved articles are stored in this browser's local storage; clearing site data removes them. Save Settings Online copies them to the server under a Settings ID so another browser or device can pick them up.
 
 ## Development
 
@@ -30,7 +30,7 @@ GitHub Pages serves static files only, so the reader cannot host an API itself. 
 
 `MYNEWS_API_BASE` at build time decides which API origin the reader calls. The GitHub Pages workflow reads it from the `MYNEWS_API_BASE` repository variable. Unset, the build falls back to the previous private host so an unconfigured deploy keeps working.
 
-The Worker allows the GitHub Pages origin via CORS and varies on `Origin`, so cached feed responses are never shared across origins. The legacy authenticated library API (`app/api/library/route.ts`, ChatGPT sign-in) is used only by the private Next site and is not part of the public reader.
+The Worker allows the GitHub Pages origin via CORS and varies on `Origin`, so cached feed responses are never shared across origins. Nothing in the reader requires an account or a sign-in.
 
 ## Deploying the API
 
