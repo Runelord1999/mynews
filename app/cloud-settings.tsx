@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {exportBackup,parseBackup,feedEndpoint,type SettingsBackup} from '@/lib/browser-library';
+import {exportBackup,parseBackup,settingsEndpoint,type SettingsBackup} from '@/lib/browser-library';
 
 export default function CloudSettings({fontSize,ready,onRestore}:{fontSize:number;ready:boolean;onRestore:(backup:SettingsBackup)=>void}){
  const [open,setOpen]=useState(false),[id,setId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
@@ -12,7 +12,7 @@ export default function CloudSettings({fontSize,ready,onRestore}:{fontSize:numbe
   try{
    const token=id.trim().toLowerCase();
    if(!/^[a-f0-9]{64}$/.test(token))throw Error('Create an ID or paste your saved private user ID.');
-   const response=await fetch(feedEndpoint().replace(/\/feed$/,'/settings'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action,...(action==='save'?{backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
+   const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action,...(action==='save'?{backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
    const data=await response.json() as {error?:string;backup?:unknown};if(!response.ok)throw Error(data.error||'Could not access online settings.');
    try{localStorage.setItem('mynews-recovery-id',token);}catch{}
    if(action==='load'){const backup=parseBackup(JSON.stringify(data.backup));setOpen(false);onRestore(backup);}

@@ -16,12 +16,33 @@ npm run dev
 npm run build:pages
 npm run build
 npx tsc --noEmit
-node scripts/test-browser-library.mjs
+npm test
 ```
 
 GitHub Actions builds `web/` with `vite.pages.config.ts` and publishes `pages-dist/` to GitHub Pages on pushes to main. The shared React interface lives in `app/newsroom.tsx`.
 
-The live Bing News RSS adapter runs on the existing Sites Worker. GitHub Pages requests its public `/api/feed` endpoint; it allows the GitHub Pages origin via CORS. The Pages website itself is static and requires no sign-in. The legacy authenticated library API remains protected and is not used by the public reader; older saved data stays private.
+## Architecture
+
+GitHub Pages serves static files only, so the reader cannot host an API itself. Two pieces make up the public website:
+
+- **The reader** — `web/` bundled by `vite.pages.config.ts` into `pages-dist/`, published to GitHub Pages. Topics, saved articles, sites and text size live in this browser's local storage.
+- **The API** — `worker/index.ts`, a standalone Cloudflare Worker serving `/api/feed` (live headlines) and `/api/settings` (online backups, backed by D1). Browsers cannot fetch the Bing, Google News or Hacker News endpoints directly because those responses carry no CORS headers, so this Worker is required even for reading news.
+
+`MYNEWS_API_BASE` at build time decides which API origin the reader calls. The GitHub Pages workflow reads it from the `MYNEWS_API_BASE` repository variable. Unset, the build falls back to the previous private host so an unconfigured deploy keeps working.
+
+The Worker allows the GitHub Pages origin via CORS and varies on `Origin`, so cached feed responses are never shared across origins. The legacy authenticated library API (`app/api/library/route.ts`, ChatGPT sign-in) is used only by the private Next site and is not part of the public reader.
+
+## Deploying the API
+
+```sh
+npx wrangler login
+npm run db:apply       # creates settings_backups in the mynews-db D1 database
+npm run deploy:worker  # publishes mynews-api
+```
+
+Then set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to the deployed Worker origin, for example `https://mynews-api.<your-subdomain>.workers.dev`, and re-run the Pages workflow. After that build, the reader no longer references the private host at all and the private site can be shut down.
+
+Run `npm test` to exercise the Worker's routing, CORS, online backup and rate-limiting behaviour without deploying.
 
 ## Reading behavior
 
@@ -33,6 +54,8 @@ The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both
 
 
 ## Settings backup
+
+Use **Online settings** in the header to keep a copy on the server without signing in. Create a private user ID, save it somewhere safe, then use Save online and Retrieve settings on any browser or device holding that ID. The server stores only a SHA-256 hash of the ID alongside the backup, so the ID cannot be recovered from the database — but anyone holding it can read or replace that backup, and a lost ID cannot be recovered. Online backups are capped at 128 KB and rate limited per IP address; a `delete` action erases your stored copy.
 
 Use **Save settings** in the header to download a dated JSON file containing your topics, keyword lists, saved article URLs/titles/excerpts, and font size. Keep it in a folder on your local drive. Use **Restore settings** to choose that file after clearing browser data or on another device. A preview shows the counts and asks before replacing this browser's library. Invalid files are rejected without changing settings. Backups are handled locally in the browser, not uploaded. The browser controls the download destination.
 

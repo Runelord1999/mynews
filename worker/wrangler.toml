@@ -1,0 +1,22 @@
+name = "mynews-api"
+main = "index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Origins allowed to call this API. Add a custom domain here if the reader ever
+# moves off GitHub Pages.
+[vars]
+ALLOWED_ORIGINS = "https://runelord1999.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mynews-db"
+database_id = "a23ee320-6b39-44fc-b11d-ac0d0d02a6b4"
+
+# Caps online-settings traffic per client IP so an unauthenticated endpoint
+# cannot be hammered into the D1 free-tier limits.
+[[unsafe.bindings]]
+name = "SETTINGS_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }

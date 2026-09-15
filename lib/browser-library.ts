@@ -52,4 +52,15 @@ export function writeLibrary(input:unknown){const b=z.discriminatedUnion('action
  if(b.action==='remove')state.articles=state.articles.filter(a=>a.id!==b.id);
  localStorage.setItem(key,JSON.stringify(state));
 }
-export function feedEndpoint(){return location.hostname==='runelord1999.github.io'?'https://mynews-daryl.runelord1999.chatgpt.site/api/feed':'/api/feed';}
+// Base URL of the Mynews API. Set MYNEWS_API_BASE at build time to point the
+// static reader at its own Worker; an empty value keeps same-origin requests,
+// which is what the local dev server and the legacy private site use.
+declare const __MYNEWS_API_BASE__: string | undefined;
+export function apiBase(){
+ const configured = typeof __MYNEWS_API_BASE__ === 'string' ? __MYNEWS_API_BASE__ : '';
+ if (configured) return configured.replace(/\/+$/, '');
+ // Fallback for a Pages build published without MYNEWS_API_BASE set.
+ return location.hostname.endsWith('github.io') ? 'https://mynews-daryl.runelord1999.chatgpt.site' : '';
+}
+export function feedEndpoint(){return apiBase()+'/api/feed';}
+export function settingsEndpoint(){return apiBase()+'/api/settings';}
