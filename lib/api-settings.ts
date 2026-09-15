@@ -28,7 +28,7 @@ export async function handleSettings(request: Request, options: SettingsOptions)
  }
 
  try {
-  if (Number(request.headers.get('content-length')) > limit) return reply({error: 'Settings exceed the 128 KB online limit. Use Save settings to download a file instead.'}, 413);
+  if (Number(request.headers.get('content-length')) > limit) return reply({error: 'Settings exceed the 128 KB online limit. Use Save Settings Locally to download a file instead.'}, 413);
   const reader = request.body?.getReader(); if (!reader) return reply({error: 'Missing settings request.'}, 400);
   let size = 0, raw = ''; const decoder = new TextDecoder();
   while (true) {

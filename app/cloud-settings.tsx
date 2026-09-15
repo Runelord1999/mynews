@@ -29,7 +29,7 @@ export default function CloudSettings({fontSize,ready,onApply}:{fontSize:number;
    }
   }catch(error){note(error instanceof Error?error.message:'Could not reach online settings. Please try again.','error');}finally{setBusy(false);}
  }
- return <><button className="backup-button" onClick={()=>setOpen(true)}>Online settings</button><Dialog open={open} onOpenChange={value=>{if(!busy)setOpen(value);}}><DialogContent className="editor"><DialogTitle>Save and share settings</DialogTitle><DialogDescription>Store your topics, source sites, reading list and text size under a Settings ID. Anyone with the ID can apply the same setup — like sharing a playlist.</DialogDescription>
+ return <><button className="backup-button" onClick={()=>setOpen(true)}>Save Settings Online</button><Dialog open={open} onOpenChange={value=>{if(!busy)setOpen(value);}}><DialogContent className="editor"><DialogTitle>Save and share settings</DialogTitle><DialogDescription>Store your topics, source sites, reading list and text size under a Settings ID. Anyone with the ID can apply the same setup — like sharing a playlist.</DialogDescription>
  <div className="settings-id-row">
   <label>Settings ID<input value={id} onChange={e=>{setId(e.target.value);clearNote();}} autoComplete="off" spellCheck={false} maxLength={40} placeholder="Create an ID or type one to apply" disabled={busy}/></label>
   <label>Settings ID Owner Name<input value={owner} onChange={e=>{setOwner(e.target.value);clearNote();}} autoComplete="off" maxLength={60} placeholder="Who is creating this ID" disabled={busy}/></label>

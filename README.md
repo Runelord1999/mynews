@@ -55,9 +55,9 @@ The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both
 
 ## Settings backup
 
-### Online settings
+### Save Settings Online
 
-**Online settings** stores your topics, source sites, reading list and text size on the server under a **Settings ID**. IDs are readable words, not secrets: `Create new ID` suggests one like `quiet-harbor-4f2a`, and you can type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive).
+**Save Settings Online** stores your topics, source sites, reading list and text size on the server under a **Settings ID**. IDs are readable words, not secrets: `Create new ID` suggests one like `quiet-harbor-4f2a`, and you can type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive).
 
 **Settings ID Owner Name** records who created the ID. It is required to save and is set once, when the ID is first stored, so a later save by someone else does not rewrite it. Master Admin can correct it.
 
@@ -87,7 +87,7 @@ The Worker then refuses admin requests without the key, and the panel shows a ke
 
 ### Local file backup
 
-Use **Save settings** in the header to download a dated JSON file containing your topics, keyword lists, saved article URLs/titles/excerpts, and font size. Keep it in a folder on your local drive. Use **Restore settings** to choose that file after clearing browser data or on another device. A preview shows the counts and asks before replacing this browser's library. Invalid files are rejected without changing settings. Backups are handled locally in the browser, not uploaded. The browser controls the download destination.
+Use **Save Settings Locally** in the header to download a dated JSON file containing your topics, keyword lists, saved article URLs/titles/excerpts, and font size. Keep it in a folder on your local drive. Use **Restore Settings Locally** to choose that file after clearing browser data or on another device. A preview shows the counts and asks before replacing this browser's library. Invalid files are rejected without changing settings. Backups are handled locally in the browser, not uploaded. The browser controls the download destination.
 
 
 ## Website searches and news sources
