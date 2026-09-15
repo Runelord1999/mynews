@@ -1,6 +1,6 @@
 // Exercises the standalone Mynews API Worker against an in-memory SQLite
-// database: routing, CORS, shareable settings IDs, access logging, and the
-// Master Admin list/rename/delete flow with its server-side key.
+// database: routing, CORS, shareable settings IDs, owner names, and the
+// Master Admin list/rename/delete flow.
 import {build} from 'esbuild';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -8,7 +8,7 @@ import {readFileSync} from 'node:fs';
 
 const sqlite = new DatabaseSync(':memory:');
 for (const statement of readFileSync('worker/schema.sql', 'utf8').split(';')) if (statement.trim()) sqlite.exec(statement);
-const count = table => sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
+const count = () => sqlite.prepare('SELECT COUNT(*) AS n FROM settings').get().n;
 const DB = {prepare(sql) {return {bind(...args) {return {
   async first() {return sqlite.prepare(sql).get(...args) ?? null;},
   async all() {return {results: sqlite.prepare(sql).all(...args)};},
@@ -19,52 +19,59 @@ const built = await build({entryPoints: ['worker/index.ts'], bundle: true, platf
 const worker = (await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))).default;
 
 const pages = 'https://runelord1999.github.io';
-const adminKey = 'correct-horse-battery-staple';
 const backup = {format: 'mynews-settings', version: 1, exportedAt: new Date().toISOString(), fontSize: 14, topics: [{name: 'AI', keywords: 'AGI'}], sites: [{name: 'Example', url: 'https://example.com/', searchUrl: ''}], articles: []};
-const device = {platform: 'Windows', mobile: false, screen: '2560x1440@1x', cores: 16, timezone: 'Asia/Singapore'};
 
 let limiterAllows = true;
-const env = () => ({DB, ALLOWED_ORIGINS: pages, ADMIN_KEY: adminKey, SETTINGS_RATE_LIMITER: {async limit() {return {success: limiterAllows};}}});
+const env = extra => ({DB, ALLOWED_ORIGINS: pages, SETTINGS_RATE_LIMITER: {async limit() {return {success: limiterAllows};}}, ...extra});
 const headers = extra => ({'Content-Type': 'application/json', Origin: pages, 'CF-Connecting-IP': '203.0.113.7', 'User-Agent': 'TestBrowser/1.0', ...extra});
 const settings = (body, e = env()) => worker.fetch(new Request('https://api.test/api/settings', {method: 'POST', headers: headers(), body: JSON.stringify(body)}), e);
-const admin = (body, key = adminKey, e = env()) => worker.fetch(new Request('https://api.test/api/admin', {method: 'POST', headers: headers({'X-Admin-Key': key}), body: JSON.stringify(body)}), e);
+const admin = (body, extra = {}, e = env()) => worker.fetch(new Request('https://api.test/api/admin', {method: 'POST', headers: headers(extra), body: JSON.stringify(body)}), e);
 
 // Routing and CORS
 assert.equal((await worker.fetch(new Request('https://api.test/'), env())).status, 404);
-assert.deepEqual(await (await worker.fetch(new Request('https://api.test/api/health'), env())).json(), {ok: true, database: true, admin: true});
+assert.deepEqual(await (await worker.fetch(new Request('https://api.test/api/health'), env())).json(), {ok: true, database: true, adminKeyRequired: false});
 const feed = await worker.fetch(new Request('https://api.test/api/feed?q=', {headers: {Origin: pages}}), env());
 assert.equal(feed.status, 400);
 assert.equal(feed.headers.get('Vary'), 'Origin', 'cacheable feed responses must vary on Origin');
 assert.equal((await worker.fetch(new Request('https://api.test/api/feed?q=', {headers: {Origin: 'https://evil.test'}}), env())).headers.get('Access-Control-Allow-Origin'), null);
 
-// Human-readable IDs are accepted; unusable ones are rejected before any write.
-assert.equal((await settings({action: 'save', id: 'daryl-markets', backup, device})).status, 200);
-assert.equal((await settings({action: 'save', id: 'no', backup})).status, 400, 'too short');
-assert.equal((await settings({action: 'save', id: 'has spaces', backup})).status, 400);
-assert.equal((await settings({action: 'save', id: 'a'.repeat(41), backup})).status, 400);
-assert.equal(count('settings'), 1);
+// Saving requires a usable ID and an owner name.
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup})).status, 200);
+assert.equal((await settings({action: 'save', id: 'no-owner-here', backup})).status, 400, 'owner name is required');
+assert.equal((await settings({action: 'save', id: 'short-owner', owner: 'D', backup})).status, 400);
+assert.equal((await settings({action: 'save', id: 'no', owner: 'Daryl', backup})).status, 400, 'too short');
+assert.equal((await settings({action: 'save', id: 'has spaces', owner: 'Daryl', backup})).status, 400);
+assert.equal(count(), 1);
 
-// IDs are stored in plain text, and are case-insensitive.
+// IDs are stored in plain text and match case-insensitively.
 assert.equal(sqlite.prepare('SELECT id FROM settings').get().id, 'daryl-markets');
 assert.equal((await (await settings({action: 'apply', id: 'DARYL-Markets'})).json()).backup.fontSize, 14);
 
-// Sharing: a second person applies the same ID and gets the same settings.
-const shared = await settings({action: 'apply', id: 'daryl-markets'});
-assert.equal(shared.status, 200);
-assert.deepEqual((await shared.json()).backup.sites, backup.sites);
+// Nothing about the visitor is stored.
+const columns = sqlite.prepare('PRAGMA table_info(settings)').all().map(c => c.name);
+assert.deepEqual(columns, ['id', 'owner', 'data', 'created_at', 'updated_at', 'save_count']);
+assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'settings_access'").get().n, 0);
+assert.ok(!JSON.stringify(sqlite.prepare('SELECT * FROM settings').all()).includes('203.0.113.7'), 'no IP address is persisted');
+assert.ok(!JSON.stringify(sqlite.prepare('SELECT * FROM settings').all()).includes('TestBrowser'), 'no user agent is persisted');
+
+// Sharing: anyone with the ID gets the same settings and sees the owner.
+const shared = await (await settings({action: 'apply', id: 'daryl-markets'})).json();
+assert.deepEqual(shared.backup.sites, backup.sites);
+assert.equal(shared.owner, 'Daryl');
 assert.equal((await settings({action: 'apply', id: 'never-saved-id'})).status, 404);
 
-// Saving again updates in place and counts the version.
-const resaved = await (await settings({action: 'save', id: 'daryl-markets', backup: {...backup, fontSize: 18}, device})).json();
+// Re-saving updates in place, counts the version, and keeps the creator.
+const resaved = await (await settings({action: 'save', id: 'daryl-markets', owner: 'Someone Else', backup: {...backup, fontSize: 18}})).json();
 assert.equal(resaved.saveCount, 2);
-assert.equal(count('settings'), 1);
+assert.equal(resaved.owner, 'Daryl', 'the owner is whoever created the ID');
+assert.equal(count(), 1);
 assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).backup.fontSize, 18);
 
 // Rubbish payloads never overwrite good settings.
-assert.equal((await settings({action: 'save', id: 'daryl-markets', backup: {...backup, sites: [{name: 'Bad', url: 'javascript:alert(1)'}]}})).status, 400);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup: {...backup, sites: [{name: 'Bad', url: 'javascript:alert(1)'}]}})).status, 400);
 assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).backup.fontSize, 18);
-assert.equal((await settings({action: 'save', id: 'daryl-markets', backup: {...backup, extra: 'x'.repeat(128 * 1024)}})).status, 413);
-assert.equal((await settings({action: 'save', id: 'daryl-markets', backup}, {...env(), DB: undefined})).status, 503);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup: {...backup, extra: 'x'.repeat(128 * 1024)}})).status, 413);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup}, env({DB: undefined}))).status, 503);
 
 // Origin and rate limiting
 assert.equal((await worker.fetch(new Request('https://api.test/api/settings', {method: 'POST', headers: {...headers(), Origin: 'https://evil.test'}, body: '{}'}), env())).status, 403);
@@ -73,48 +80,43 @@ assert.equal((await settings({action: 'apply', id: 'daryl-markets'})).status, 42
 assert.equal((await admin({action: 'list'})).status, 429);
 limiterAllows = true;
 
-// The access trail records who used an ID, and stays bounded.
-const trail = sqlite.prepare('SELECT * FROM settings_access ORDER BY event_id').all();
-assert.ok(trail.length >= 4);
-assert.equal(trail[0].ip, '203.0.113.7');
-assert.equal(trail[0].user_agent, 'TestBrowser/1.0');
-assert.ok(JSON.parse(trail[0].device).cores === 16);
-for (let i = 0; i < 25; i++) await settings({action: 'apply', id: 'daryl-markets'});
-assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM settings_access WHERE settings_id = ?').get('daryl-markets').n, 20, 'trail capped at 20 per ID');
-
-// Master Admin refuses everyone without the server-side key.
-assert.equal((await admin({action: 'list'}, 'wrong-key')).status, 401);
-assert.equal((await admin({action: 'list'}, '')).status, 401);
-assert.equal((await admin({action: 'list'}, adminKey, {...env(), ADMIN_KEY: undefined})).status, 503, 'fails closed when unconfigured');
-
-// Listing exposes creation time, usage and last-seen client details.
-await settings({action: 'save', id: 'team-desk', backup, device});
+// Master Admin is open when no key is configured.
+await settings({action: 'save', id: 'team-desk', owner: 'GFM Desk', backup});
 const listed = await (await admin({action: 'list'})).json();
 assert.equal(listed.entries.length, 2);
 const entry = listed.entries.find(e => e.id === 'daryl-markets');
+assert.equal(entry.owner, 'Daryl');
 assert.ok(entry.createdAt && entry.updatedAt);
-assert.equal(entry.lastIp, '203.0.113.7');
 assert.equal(entry.topics, 1);
 assert.equal(entry.sites, 1);
-assert.ok(listed.history['daryl-markets'].length > 0);
+assert.ok(!JSON.stringify(listed).includes('203.0.113.7'), 'admin never reports IP addresses');
 
-// Rename carries the access trail with it and refuses collisions.
+// Setting ADMIN_KEY turns the check on with no change to the page.
+const locked = env({ADMIN_KEY: 'battery-staple'});
+assert.equal((await worker.fetch(new Request('https://api.test/api/health'), locked)).status, 200);
+assert.equal((await (await worker.fetch(new Request('https://api.test/api/health'), locked)).json()).adminKeyRequired, true);
+const refused = await admin({action: 'list'}, {}, locked);
+assert.equal(refused.status, 401);
+assert.equal((await refused.json()).keyRequired, true, 'the page is told a key is needed');
+assert.equal((await admin({action: 'list'}, {'X-Admin-Key': 'wrong'}, locked)).status, 401);
+assert.equal((await admin({action: 'list'}, {'X-Admin-Key': 'battery-staple'}, locked)).status, 200);
+
+// Rename the ID, and correct an owner name, independently.
 assert.equal((await admin({action: 'rename', id: 'daryl-markets', newId: 'team-desk'})).status, 409);
 assert.equal((await admin({action: 'rename', id: 'daryl-markets', newId: 'bad id'})).status, 400);
 assert.equal((await admin({action: 'rename', id: 'missing-id', newId: 'fresh-name'})).status, 404);
-assert.equal((await admin({action: 'rename', id: 'daryl-markets', newId: 'GFM-Desk'})).status, 200);
-assert.equal((await settings({action: 'apply', id: 'gfm-desk'})).status, 200);
+assert.equal((await admin({action: 'rename', id: 'daryl-markets', newOwner: 'D'})).status, 400);
+assert.equal((await admin({action: 'rename', id: 'daryl-markets', newOwner: 'Daryl Y'})).status, 200);
+assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).owner, 'Daryl Y');
+assert.equal((await admin({action: 'rename', id: 'daryl-markets', newId: 'GFM-Markets'})).status, 200);
+assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 200);
 assert.equal((await settings({action: 'apply', id: 'daryl-markets'})).status, 404);
-assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM settings_access WHERE settings_id = ?').get('gfm-desk').n, 20);
+assert.equal((await (await settings({action: 'apply', id: 'gfm-markets'})).json()).owner, 'Daryl Y', 'renaming keeps the owner');
 
-// Delete removes the entry and its trail.
-assert.equal((await admin({action: 'delete', id: 'gfm-desk'})).status, 200);
-assert.equal((await settings({action: 'apply', id: 'gfm-desk'})).status, 404);
-assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM settings_access WHERE settings_id = ?').get('gfm-desk').n, 0);
-assert.equal(count('settings'), 1);
-
-// Users can still delete their own entry without the admin key.
+// Delete, from admin and from the user's own dialog.
+assert.equal((await admin({action: 'delete', id: 'gfm-markets'})).status, 200);
+assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404);
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
-assert.equal(count('settings'), 0);
+assert.equal(count(), 0);
 
-console.log('PASS: routing, CORS, shareable IDs, sharing and overwrite, validation, rate limiting, bounded access trail, admin key enforcement, list/rename/delete.');
+console.log('PASS: routing, CORS, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

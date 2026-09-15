@@ -10,6 +10,16 @@ export function validId(value: string) {
   return idPattern.test(normaliseId(value));
 }
 
+// Who created an ID. Free text, kept short and stripped of control characters.
+export function normaliseOwner(value: string) {
+  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+}
+
+export function validOwner(value: string) {
+  const owner = normaliseOwner(value);
+  return owner.length >= 2 && owner.length <= 60;
+}
+
 const adjectives = ['amber', 'brisk', 'calm', 'clever', 'crisp', 'daily', 'eager', 'early', 'golden', 'keen', 'lucid', 'north', 'quiet', 'rapid', 'sharp', 'solar', 'steady', 'swift', 'urban', 'vivid'];
 const nouns = ['anchor', 'beacon', 'bulletin', 'canvas', 'column', 'compass', 'digest', 'edition', 'gazette', 'harbor', 'headline', 'journal', 'ledger', 'lookout', 'marker', 'notebook', 'outlook', 'signal', 'summit', 'tribune'];
 

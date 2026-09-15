@@ -36,14 +36,13 @@ The Worker allows the GitHub Pages origin via CORS and varies on `Origin`, so ca
 
 ```sh
 npx wrangler login
-npm run db:apply        # creates the settings tables in the mynews-db D1 database
-npm run secret:admin    # sets ADMIN_KEY, the Master Admin password
+npm run db:apply        # creates the settings table in the mynews-db D1 database
 npm run deploy:worker   # publishes mynews-api
 ```
 
 Then set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to the deployed Worker origin, for example `https://mynews-api.<your-subdomain>.workers.dev`, and re-run the Pages workflow.
 
-Run `npm test` to exercise the Worker's routing, CORS, settings sharing, access trail and admin flow without deploying.
+Run `npm test` to exercise the Worker's routing, CORS, settings sharing and admin flow without deploying.
 
 ## Reading behavior
 
@@ -60,18 +59,31 @@ The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both
 
 **Online settings** stores your topics, source sites, reading list and text size on the server under a **Settings ID**. IDs are readable words, not secrets: `Create new ID` suggests one like `quiet-harbor-4f2a`, and you can type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive).
 
+**Settings ID Owner Name** records who created the ID. It is required to save and is set once, when the ID is first stored, so a later save by someone else does not rewrite it. Master Admin can correct it.
+
 - **Save online** writes the current settings under that ID and confirms what was saved.
 - **Apply settings** fetches whatever is stored under the ID you typed and asks before replacing this browser's library.
 
-IDs are meant to be shared, like a playlist link — anyone with the ID can apply the same setup. The same ID is also the write key, so anyone holding it can overwrite what is stored there. Pick a distinctive ID for anything you want to keep, and treat a shared ID as shared in both directions. Online settings are capped at 128 KB and rate limited per IP address.
+IDs are meant to be shared, like a playlist link — anyone with the ID can apply the same setup, and anyone holding it can overwrite what is stored there. Online settings are capped at 128 KB and rate limited per IP address.
+
+Nothing about the visitor is stored: no IP address, no user agent, no device details. Each entry holds only the ID, the owner name, the settings themselves, when it was created, when it was last saved, and how many times.
 
 ### Master Admin
 
-**Master Admin** lists every Settings ID on the server with its creation time, last save, save count, and the IP address, approximate location, browser and device summary last seen using it, plus a capped trail of the twenty most recent events per ID. IDs can be renamed (the access trail follows) or deleted.
+Master Admin has no button of its own. The word **EDITION** in "YOUR PERSONAL EDITION", top left, is the trigger: it looks like ordinary text and opens the panel when clicked.
 
-Access is enforced by the Worker, not the page: the panel sends the key you type to `/api/admin`, which compares it against the `ADMIN_KEY` secret. With no secret set, every admin request is refused. The published page contains no key — a static site cannot hide one, so this is the only way the check can be real.
+The panel lists every Settings ID with its owner, creation time, last save and save count. IDs can be renamed, owner names corrected, and entries deleted.
 
-Device details come from what a browser volunteers — platform, screen size, timezone, language, core count, memory class. Real hardware identifiers (serial numbers, hostnames, MAC addresses) are not available to any website. IP addresses and browser details are personal data under the PDPA and GDPR: tell people you are collecting it, and delete IDs you no longer need.
+It is open by default — no password. Hiding the trigger keeps it out of the way of ordinary readers, but the published page is public JavaScript, so anyone who reads it can call `/api/admin` directly and list, rename or delete entries. That is an accepted trade-off while the stored settings are search preferences that do not matter if lost.
+
+To turn on a key check later, set the secret and redeploy:
+
+```sh
+npm run secret:admin
+npm run deploy:worker
+```
+
+The Worker then refuses admin requests without the key, and the panel shows a key field on its own. Remove it again with `npx wrangler secret delete ADMIN_KEY --config worker/wrangler.toml`. No page change is needed either way.
 
 ### Local file backup
 
