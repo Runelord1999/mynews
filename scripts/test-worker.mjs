@@ -19,7 +19,7 @@ const built = await build({entryPoints: ['worker/index.ts'], bundle: true, platf
 const worker = (await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))).default;
 
 const pages = 'https://runelord1999.github.io';
-const backup = {format: 'mynews-settings', version: 1, exportedAt: new Date().toISOString(), fontSize: 14, topics: [{name: 'AI', keywords: 'AGI'}], sites: [{name: 'Example', url: 'https://example.com/', searchUrl: ''}], articles: []};
+const backup = {format: 'mynews-settings', version: 1, exportedAt: new Date().toISOString(), fontSize: 14, topics: [{name: 'AI', keywords: 'AGI'}], sites: [{name: 'Example', url: 'https://example.com/', searchUrl: '', feedUrl: ''}], articles: []};
 
 let limiterAllows = true;
 const env = extra => ({DB, ALLOWED_ORIGINS: pages, SETTINGS_RATE_LIMITER: {async limit() {return {success: limiterAllows};}}, ...extra});
@@ -34,6 +34,43 @@ const feed = await worker.fetch(new Request('https://api.test/api/feed?q=', {hea
 assert.equal(feed.status, 400);
 assert.equal(feed.headers.get('Vary'), 'Origin', 'cacheable feed responses must vary on Origin');
 assert.equal((await worker.fetch(new Request('https://api.test/api/feed?q=', {headers: {Origin: 'https://evil.test'}}), env())).headers.get('Access-Control-Allow-Origin'), null);
+
+// Site feeds: the browser names the address, so the Worker validates it.
+const feedCalls = [];
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (url.startsWith('https://example.com/')) {
+    feedCalls.push(url);
+    const body = Array.from({length: 300}, (_, i) => 'alpha' + i).join(' ');
+    return new Response(`<rss><item><title>Reactor milestone</title><link>https://example.com/a</link><content:encoded><![CDATA[${body}]]></content:encoded></item><item><title>Unrelated cooking piece</title><link>https://example.com/b</link><description>Pastry technique</description></item></rss>`);
+  }
+  return realFetch(input, init);
+};
+const siteFeed = (params, e = env()) => worker.fetch(new Request('https://api.test/api/feed?' + new URLSearchParams(params), {headers: {Origin: pages}}), e);
+
+const feedOk = await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/feed'});
+assert.equal(feedOk.status, 200);
+const feedBody = await feedOk.json();
+assert.equal(feedBody.articles.length, 1, 'only keyword matches are kept');
+assert.equal(feedBody.articles[0].title, 'Reactor milestone');
+assert.equal(feedBody.articles[0].excerpt.split(/\s+/).length, 250, 'full body trimmed to 250 words');
+assert.equal(feedBody.articles[0].provider, 'example.com');
+
+// A feed on another host, a private address, or a missing address is refused
+// without any outbound request being made.
+const before = feedCalls.length;
+assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'https://evil.test/feed'})).status, 400);
+assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'http://127.0.0.1/feed'})).status, 400);
+assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'http://192.168.1.1/feed'})).status, 400);
+assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'file:///etc/passwd'})).status, 400);
+assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com'})).status, 400, 'feed address required');
+assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', feed: 'https://example.com/feed'})).status, 400, 'site required');
+assert.equal(feedCalls.length, before, 'no request leaves the Worker for a refused feed');
+
+// A subdomain of the saved site is allowed.
+assert.equal((await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/rss'})).status, 200);
+globalThis.fetch = realFetch;
 
 // Saving requires a usable ID and an owner name.
 assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup})).status, 200);
@@ -119,4 +156,4 @@ assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404)
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
 assert.equal(count(), 0);
 
-console.log('PASS: routing, CORS, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');
+console.log('PASS: routing, CORS, site feeds with SSRF guards, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

@@ -25,6 +25,13 @@ lib.restoreBackup(lib.parseBackup(sitesBackup));
 assert.equal(lib.readLibrary().sites[0].name,'Example');
 assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad',url:'javascript:alert(1)',searchUrl:''}]}));
 assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad',url:'https://example.com',searchUrl:'https://elsewhere.com/?q={query}'}]}));
+// A backup written before feeds existed still restores, gaining an empty feed.
+const preFeed=JSON.parse(backup);
+preFeed.sites=[{name:'Legacy',url:'https://legacy.example/',searchUrl:''}];
+assert.equal(lib.parseBackup(JSON.stringify(preFeed)).sites[0].feedUrl,'');
+assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad feed',url:'https://example.com',searchUrl:'',feedUrl:'https://elsewhere.com/feed'}]}),'a feed must be on the same website');
+lib.writeLibrary({action:'sites',sites:[{name:'Good feed',url:'https://example.com',searchUrl:'',feedUrl:'https://example.com/rss'}]});
+assert.equal(lib.readLibrary().sites[0].feedUrl,'https://example.com/rss');
 const oldBackup=JSON.parse(backup);delete oldBackup.sites;
 assert.deepEqual(lib.parseBackup(JSON.stringify(oldBackup)).sites,[]);
 memory.clear();

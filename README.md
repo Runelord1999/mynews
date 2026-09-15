@@ -92,7 +92,15 @@ Use **Save Settings Locally** in the header to download a dated JSON file contai
 
 ## Website searches and news sources
 
-Add a site saves a website URL with a name and optional native search URL containing {query}. Your Sites provides a direct site link, a keyword-search link, and a site filter for aggregated stories. Without a native search template, the search link opens Google restricted to that website. Selecting a topic supplies that topic's keywords; All stories supplies all topics. Saved sites are included in backups; older backups still restore successfully.
+Add a site saves a website URL with a name, an optional native search URL containing {query}, and an optional full-text feed URL. Your Sites provides a direct site link, a keyword-search link, and a site filter for aggregated stories. Without a native search template, the search link opens Google restricted to that website. Selecting a topic supplies that topic's keywords; All stories supplies all topics. Saved sites are included in backups; older backups still restore successfully.
+
+### Full-text feeds and article summaries
+
+A saved site can carry a **Full-text feed URL** — an RSS or Atom address on the same website. When a publisher puts the whole article in its feed, cards show up to **250 words** of it instead of a one-line teaser. Publishers that syndicate only a teaser still show the teaser; there is no way to widen what a feed does not contain, and nothing is scraped from the article page.
+
+Feeds are read by the Worker, which checks the address before fetching: same host as the saved site, a public address, and http or https only. Articles from a feed are filtered by the selected topic's keywords, matched against the headline and body, because a publisher feed carries whatever was posted rather than a search result. Feeds are queried when Sources is set to all.
+
+Card body text sits below the reading size and scrolls within the card, so a long summary does not stretch the grid. The text size slider still scales it.
 
 Sources supports Bing News, Google News RSS, Hacker News (Algolia), or all three. Google RSS may provide only a headline; Hacker News cards include discussion metadata when no excerpt exists. Google News article links may redirect to the publisher. Site filters use the news indexes and do not scrape or guarantee coverage of every page. Native-site search links open in a new tab. Search templates must use the same hostname as the saved site. Hacker News supports up to ten OR-separated terms per topic.
 

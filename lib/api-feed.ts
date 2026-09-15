@@ -1,4 +1,4 @@
-import {parseFeed, plain, safeUrl, type Article} from './news';
+import {parseFeed, plain, safeUrl, summarise, type Article} from './news';
 import {corsHeaders} from './api-cors';
 
 async function readRemote(url: string) {
@@ -14,6 +14,24 @@ async function readRemote(url: string) {
  return text + decoder.decode();
 }
 
+// The feed URL comes from the browser, so it is checked here rather than
+// trusted: same host as the saved site, public address only, http(s) only.
+function safeFeedUrl(feed: string, site: string) {
+ const url = new URL(safeUrl(feed));
+ if (url.hostname !== site && !url.hostname.endsWith('.' + site)) throw Error('Feed must be on the same website.');
+ if (/^(localhost$|127\.|10\.|192\.168\.|169\.254\.|0\.|\[|::)/i.test(url.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname)) throw Error('Feed must be a public address.');
+ return url.href;
+}
+
+// A publisher feed carries whatever the publisher just posted, so the topic's
+// keywords are applied here instead of by the upstream search engine.
+function matchesKeywords(article: Article, q: string) {
+ const terms = q.split(/\s+OR\s+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+ if (!terms.length) return true;
+ const haystack = (article.title + ' ' + article.excerpt).toLowerCase();
+ return terms.some(term => haystack.includes(term));
+}
+
 export async function handleFeed(request: Request, options: {allowedOrigins: string[]}) {
  const cors = corsHeaders(request, options.allowedOrigins, 'GET');
  if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: cors});
@@ -22,11 +40,17 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
  const provider = params.get('provider') || 'bing';
  const site = params.get('site')?.trim() || '';
  const fail = (error: string, status: number) => Response.json({error}, {status, headers: {...cors, 'Cache-Control': 'no-store'}});
- if (!q || q.length > 300 || !['bing', 'google', 'hackernews'].includes(provider) || site.length > 253 || (site && !/^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/i.test(site))) return fail('Invalid keywords or source.', 400);
+ const feed = params.get('feed')?.trim() || '';
+ if (!q || q.length > 300 || !['bing', 'google', 'hackernews', 'sitefeed'].includes(provider) || site.length > 253 || (site && !/^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/i.test(site))) return fail('Invalid keywords or source.', 400);
+ if (provider === 'sitefeed' && (!feed || feed.length > 4096 || !site)) return fail('A site feed needs its website and feed address.', 400);
  try {
   let articles: Article[] = [];
   const search = site ? '(' + q + ') site:' + site : q;
-  if (provider === 'hackernews') {
+  if (provider === 'sitefeed') {
+   let target; try {target = safeFeedUrl(feed, site);} catch {return fail('That feed address cannot be used.', 400);}
+   const xml = await readRemote(target);
+   articles = parseFeed(xml, q).filter(a => matchesKeywords(a, q)).map(a => ({...a, provider: site}));
+  } else if (provider === 'hackernews') {
    const terms = q.split(/\s+OR\s+/).map(t => t.trim()).filter(Boolean); if (terms.length > 10) throw Error('Too many keyword terms');
    const results = await Promise.all(terms.map(async term => {
     const data = JSON.parse(await readRemote('https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=20&query=' + encodeURIComponent(term))) as {hits: Array<{objectID: string; title: string; url: string | null; story_text: string | null; created_at: string; points: number; num_comments: number}>};
@@ -35,7 +59,7 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
       const url = safeUrl(hit.url || 'https://news.ycombinator.com/item?id=' + hit.objectID);
       const host = new URL(url).hostname;
       if (site && host !== site && !host.endsWith('.' + site)) return [];
-      return [{id: url, url, title: plain(hit.title || ''), excerpt: hit.story_text ? plain(hit.story_text).slice(0, 350) : 'Discussed on Hacker News · ' + hit.points + ' points · ' + hit.num_comments + ' comments. Open the original story for the full article.', source: host.replace(/^www\./, ''), date: hit.created_at, topic: q, provider: 'Hacker News'}];
+      return [{id: url, url, title: plain(hit.title || ''), excerpt: hit.story_text ? summarise(hit.story_text) : 'Discussed on Hacker News · ' + hit.points + ' points · ' + hit.num_comments + ' comments. Open the original story for the full article.', source: host.replace(/^www\./, ''), date: hit.created_at, topic: q, provider: 'Hacker News'}];
      } catch {return [];}
     });
    }));

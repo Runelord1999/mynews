@@ -78,3 +78,9 @@ footer{margin-top:22px;padding:15px 0}
 /* The three settings buttons carry long labels, so let them wrap rather than
    push the masthead wider than the viewport. */
 .backup-controls{flex-wrap:wrap;justify-content:flex-end}
+
+/* Full-text feeds fill cards with a long summary, so body text sits well below
+   the reading size and the block is scrollable rather than unbounded. */
+.story p{font-size:calc(var(--reading-size)*.78);line-height:1.5;max-height:26em;overflow:auto;margin-bottom:12px}
+.story p::-webkit-scrollbar{width:5px}
+.story p::-webkit-scrollbar-thumb{background:#d3dbd2;border-radius:3px}

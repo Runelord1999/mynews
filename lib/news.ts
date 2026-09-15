@@ -1,10 +1,35 @@
 export type Topic = {name:string; keywords:string};
 export type Article = {id:string; title:string; excerpt:string; url:string; source:string; date:string; topic:string; provider?:string};
-export type NewsSite = {name:string;url:string;searchUrl:string};
+export type NewsSite = {name:string;url:string;searchUrl:string;feedUrl:string};
 export function siteSearchLink(site:NewsSite,keywords:string){return site.searchUrl?safeUrl(site.searchUrl.replaceAll('{query}',encodeURIComponent(keywords))):'https://www.google.com/search?q='+encodeURIComponent('site:'+new URL(site.url).hostname+' ('+keywords+')');}
 export const defaults:Topic[] = ['Trump','Anthropic','OpenAI','Singularity','AGI','AI Governance'].map(name=>({name,keywords:name}));
 export function safeUrl(value:string) { const u=new URL(value); if(!['http:','https:'].includes(u.protocol)||u.username||u.password) throw new Error('Use a valid HTTP or HTTPS article URL.'); return u.href; }
 export function plain(value:string) { return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/<[^>]*>/g,' ').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Math.min(Number(n),0x10ffff))).replace(/\s+/g,' ').trim(); }
-export function parseFeed(xml:string,topic:string):Article[] { return Array.from(xml.matchAll(/<item[ >]([\s\S]*?)<\/item>/g)).slice(0,12).flatMap(m=>{const tag=(n:string)=>m[1].match(new RegExp(`<${n}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${n}>`))?.[1]||'';try {let url=safeUrl(plain(tag('link'))); const bing=new URL(url); if(bing.hostname.endsWith('bing.com')&&bing.searchParams.has('url')) url=safeUrl(bing.searchParams.get('url')!); const title=plain(tag('title')); if(!title)return []; return [{id:url,title,excerpt:plain(tag('description')).slice(0,350),url,source:plain(tag('News:Source')||tag('source'))||new URL(url).hostname.replace(/^www\./,''),date:tag('pubDate'),topic}];} catch{return [];} }); }
+// Longest useful text an article card shows. Feeds that carry the full body
+// fill this; a feed that only carries a teaser simply comes up short.
+export const summaryWords = 250;
 
+export function summarise(html:string,limit=summaryWords) {
+ const words = plain(html).split(/\s+/).filter(Boolean);
+ return words.length > limit ? words.slice(0,limit).join(' ') + '…' : words.join(' ');
+}
 
+// Handles RSS <item> and Atom <entry>. Content is taken from the richest field
+// the feed offers: a full-text feed fills content:encoded, an aggregator feed
+// leaves only a teaser in description.
+export function parseFeed(xml:string,topic:string,limit=summaryWords):Article[] {
+ const blocks = xml.match(/<item[ >][\s\S]*?<\/item>/g) || xml.match(/<entry[ >][\s\S]*?<\/entry>/g) || [];
+ return blocks.slice(0,12).flatMap(block=>{
+  const tag=(n:string)=>block.match(new RegExp(`<${n}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${n}>`))?.[1]||'';
+  // Atom carries the article URL in a link attribute rather than element text.
+  const linkAttr=()=>block.match(/<link[^>]*\srel=["']alternate["'][^>]*\shref=["']([^"']+)["']/)?.[1]||block.match(/<link[^>]*\shref=["']([^"']+)["']/)?.[1]||'';
+  try {
+   let url=safeUrl(plain(tag('link'))||linkAttr());
+   const bing=new URL(url);
+   if(bing.hostname.endsWith('bing.com')&&bing.searchParams.has('url')) url=safeUrl(bing.searchParams.get('url')!);
+   const title=plain(tag('title')); if(!title)return [];
+   const body=tag('content:encoded')||tag('content')||tag('description')||tag('summary');
+   return [{id:url,title,excerpt:summarise(body,limit),url,source:plain(tag('News:Source')||tag('source')||tag('dc:creator'))||new URL(url).hostname.replace(/^www\./,''),date:tag('pubDate')||tag('published')||tag('updated'),topic}];
+  } catch{return [];}
+ });
+}

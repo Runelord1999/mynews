@@ -32,16 +32,19 @@ export default function Newsroom(){
  setLoading(true);setError('');
  const selected=tab==='All stories'?topics:topics.filter(t=>t.name===tab);
  const providers=provider==='all'?['bing','google','hackernews']:[provider];
- const jobs=selected.flatMap(t=>providers.map(p=>({topic:t,provider:p})));
+ // Saved sites with a full-text feed are queried directly alongside the
+ // aggregators, so their cards carry the publisher's own article text.
+ const feedSites=sites.filter(s=>s.feedUrl&&(!selectedSite||s.url===selectedSite));
+ const jobs=[...selected.flatMap(t=>providers.map(p=>({topic:t,provider:p,feed:''}))),...(provider==='all'?selected.flatMap(t=>feedSites.map(s=>({topic:t,provider:'sitefeed',feed:s.feedUrl+'|'+new URL(s.url).hostname}))):[])];
  const site=selectedSite?new URL(selectedSite).hostname:'';
- Promise.allSettled(jobs.map(async job=>{const q=job.topic.keywords.split(',').map(k=>k.trim()).filter(Boolean).join(' OR ');const params=new URLSearchParams({q,provider:job.provider,...(site?{site}:{})});const r=await fetch(feedEndpoint()+'?'+params,{signal:controller.signal});const data=await r.json() as {error:string;articles:Article[]};if(!r.ok)throw Error(data.error);return data.articles.map(a=>({...a,topic:job.topic.name}));})).then(results=>{
+ Promise.allSettled(jobs.map(async job=>{const q=job.topic.keywords.split(',').map(k=>k.trim()).filter(Boolean).join(' OR ');const [feedUrl,feedHost]=job.feed?job.feed.split('|'):['',''];const params=new URLSearchParams({q,provider:job.provider,...(job.feed?{feed:feedUrl,site:feedHost}:site?{site}:{})});const r=await fetch(feedEndpoint()+'?'+params,{signal:controller.signal});const data=await r.json() as {error:string;articles:Article[]};if(!r.ok)throw Error(data.error);return data.articles.map(a=>({...a,topic:job.topic.name}));})).then(results=>{
  if(controller.signal.aborted)return;
  const all=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
  const seen=new Set<string>();const unique=all.filter(a=>{const title=a.title.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(a.url)||seen.has(title))return false;seen.add(a.url);seen.add(title);return true;});
  setFeed(unique.sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)));
  if(results.every(r=>r.status==='rejected'))setError('News could not be loaded. Please try refreshing.');setLoading(false);
  });return()=>controller.abort();
- },[topics,tab,refresh,provider,selectedSite]);
+ },[topics,tab,refresh,provider,selectedSite,sites]);
  useEffect(()=>{const context=(document as Document & {modelContext?:{registerTool:(t:unknown,o:unknown)=>void|Promise<void>}}).modelContext;if(!context)return;const lifecycle=new AbortController();try{void Promise.resolve(context.registerTool({name:'view_news_topic',description:'Switch the visible news view to an existing topic or the reading list.',inputSchema:{type:'object',properties:{topic:{type:'string'}},required:['topic'],additionalProperties:false},annotations:{readOnlyHint:false},execute:async(input:{topic:string})=>{if(!['All stories','Reading list',...topics.map(t=>t.name)].includes(input.topic))throw Error('Unknown topic');setTab(input.topic);return {selectedTopic:input.topic};}},{signal:lifecycle.signal})).catch(()=>{});}catch{}return()=>lifecycle.abort();},[topics]);
  async function mutate(body:unknown){writeLibrary(body);}
  async function save(a:Article){if(!signed){toast.error('Browser storage is unavailable.');return;}try{await mutate({action:'save',article:a});setSaved(old=>[a,...old.filter(x=>x.url!==a.url)]);toast.success('Added to your reading list');}catch(e){toast.error((e as Error).message);}}
