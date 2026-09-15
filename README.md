@@ -36,13 +36,14 @@ The Worker allows the GitHub Pages origin via CORS and varies on `Origin`, so ca
 
 ```sh
 npx wrangler login
-npm run db:apply       # creates settings_backups in the mynews-db D1 database
-npm run deploy:worker  # publishes mynews-api
+npm run db:apply        # creates the settings tables in the mynews-db D1 database
+npm run secret:admin    # sets ADMIN_KEY, the Master Admin password
+npm run deploy:worker   # publishes mynews-api
 ```
 
-Then set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to the deployed Worker origin, for example `https://mynews-api.<your-subdomain>.workers.dev`, and re-run the Pages workflow. After that build, the reader no longer references the private host at all and the private site can be shut down.
+Then set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to the deployed Worker origin, for example `https://mynews-api.<your-subdomain>.workers.dev`, and re-run the Pages workflow.
 
-Run `npm test` to exercise the Worker's routing, CORS, online backup and rate-limiting behaviour without deploying.
+Run `npm test` to exercise the Worker's routing, CORS, settings sharing, access trail and admin flow without deploying.
 
 ## Reading behavior
 
@@ -55,7 +56,24 @@ The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both
 
 ## Settings backup
 
-Use **Online settings** in the header to keep a copy on the server without signing in. Create a private user ID, save it somewhere safe, then use Save online and Retrieve settings on any browser or device holding that ID. The server stores only a SHA-256 hash of the ID alongside the backup, so the ID cannot be recovered from the database — but anyone holding it can read or replace that backup, and a lost ID cannot be recovered. Online backups are capped at 128 KB and rate limited per IP address; a `delete` action erases your stored copy.
+### Online settings
+
+**Online settings** stores your topics, source sites, reading list and text size on the server under a **Settings ID**. IDs are readable words, not secrets: `Create new ID` suggests one like `quiet-harbor-4f2a`, and you can type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive).
+
+- **Save online** writes the current settings under that ID and confirms what was saved.
+- **Apply settings** fetches whatever is stored under the ID you typed and asks before replacing this browser's library.
+
+IDs are meant to be shared, like a playlist link — anyone with the ID can apply the same setup. The same ID is also the write key, so anyone holding it can overwrite what is stored there. Pick a distinctive ID for anything you want to keep, and treat a shared ID as shared in both directions. Online settings are capped at 128 KB and rate limited per IP address.
+
+### Master Admin
+
+**Master Admin** lists every Settings ID on the server with its creation time, last save, save count, and the IP address, approximate location, browser and device summary last seen using it, plus a capped trail of the twenty most recent events per ID. IDs can be renamed (the access trail follows) or deleted.
+
+Access is enforced by the Worker, not the page: the panel sends the key you type to `/api/admin`, which compares it against the `ADMIN_KEY` secret. With no secret set, every admin request is refused. The published page contains no key — a static site cannot hide one, so this is the only way the check can be real.
+
+Device details come from what a browser volunteers — platform, screen size, timezone, language, core count, memory class. Real hardware identifiers (serial numbers, hostnames, MAC addresses) are not available to any website. IP addresses and browser details are personal data under the PDPA and GDPR: tell people you are collecting it, and delete IDs you no longer need.
+
+### Local file backup
 
 Use **Save settings** in the header to download a dated JSON file containing your topics, keyword lists, saved article URLs/titles/excerpts, and font size. Keep it in a folder on your local drive. Use **Restore settings** to choose that file after clearing browser data or on another device. A preview shows the counts and asks before replacing this browser's library. Invalid files are rejected without changing settings. Backups are handled locally in the browser, not uploaded. The browser controls the download destination.
 

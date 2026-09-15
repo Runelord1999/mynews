@@ -16,7 +16,8 @@
     "deploy:worker": "wrangler deploy --config worker/wrangler.toml",
     "dev:worker": "wrangler dev --config worker/wrangler.toml",
     "db:apply": "wrangler d1 execute mynews-db --remote --config worker/wrangler.toml --file worker/schema.sql",
-    "test": "node scripts/test-browser-library.mjs && node scripts/test-online-settings.mjs && node scripts/test-worker.mjs"
+    "test": "node scripts/test-browser-library.mjs && node scripts/test-worker.mjs",
+    "secret:admin": "wrangler secret put ADMIN_KEY --config worker/wrangler.toml"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

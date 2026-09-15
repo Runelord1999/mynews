@@ -64,3 +64,4 @@ export function apiBase(){
 }
 export function feedEndpoint(){return apiBase()+'/api/feed';}
 export function settingsEndpoint(){return apiBase()+'/api/settings';}
+export function adminEndpoint(){return apiBase()+'/api/admin';}
