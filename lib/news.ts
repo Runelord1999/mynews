@@ -33,3 +33,24 @@ export function parseFeed(xml:string,topic:string,limit=summaryWords):Article[] 
   } catch{return [];}
  });
 }
+
+// Every place a story can come from, in one list: the search engines, plus
+// each saved site. A site with a feed is read directly; a site without one is
+// searched through the engines, restricted to its hostname.
+export type SourceKind='engine'|'feed'|'search';
+export type Source={id:string;name:string;kind:SourceKind;hint:string};
+export const engines:Source[]=[
+ {id:'bing',name:'Bing News',kind:'engine',hint:'News index'},
+ {id:'google',name:'Google News',kind:'engine',hint:'News index'},
+ {id:'hackernews',name:'Hacker News',kind:'engine',hint:'Discussions'},
+];
+export const engineIds=engines.map(e=>e.id);
+export function siteSourceId(site:NewsSite){return 'site:'+site.url;}
+export function allSources(sites:NewsSite[]):Source[]{
+ return [...engines,...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site'}))];
+}
+// Matches what the reader did before sources became selectable: every engine,
+// plus the sites that publish a feed. Site searches stay off until asked for.
+export function defaultSources(sites:NewsSite[]){
+ return [...engineIds,...sites.filter(s=>s.feedUrl).map(siteSourceId)];
+}

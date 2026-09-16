@@ -107,7 +107,11 @@ The Worker validates the address the same way it validates a feed — public add
 
 Each result is stored in `article_summaries` keyed by a hash of the URL, so the second reader to open the same link gets it instantly and the publisher is not asked twice. Paywalled and bot-blocked publishers will fail; that is reported on the button and the card keeps its original teaser.
 
-Sources supports Bing News, Google News RSS, Hacker News (Algolia), or all three. Google RSS may provide only a headline; Hacker News cards include discussion metadata when no excerpt exists. Google News article links may redirect to the publisher. Site filters use the news indexes and do not scrape or guarantee coverage of every page. Native-site search links open in a new tab. Search templates must use the same hostname as the saved site. Hacker News supports up to ten OR-separated terms per topic.
+**Sources** lists everything a story can come from — Bing News, Google News RSS, Hacker News (Algolia), and every saved site — and any combination can be selected at once. The selection is remembered in this browser.
+
+A site with a full-text feed is read directly from that feed. A site without one is searched through the selected news services restricted to its hostname, so selecting it narrows rather than replaces. Selecting only sites and no services searches them through all three. Clearing the selection entirely fetches nothing and says so.
+
+The site chips under Your Search Source Sites toggle the same selection, so a site can be switched on or off without opening the menu. Google RSS may provide only a headline; Hacker News cards include discussion metadata when no excerpt exists. Google News article links may redirect to the publisher. Site filters use the news indexes and do not scrape or guarantee coverage of every page. Native-site search links open in a new tab. Search templates must use the same hostname as the saved site. Hacker News supports up to ten OR-separated terms per topic.
 
 ## Seven starter publisher sites
 
