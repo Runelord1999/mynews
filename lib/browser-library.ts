@@ -1,6 +1,7 @@
 import {defaults, safeUrl, type Article, type Topic, type NewsSite} from './news';
 import {z} from 'zod';
 import {starterSites, starterSitesVersion} from './starter-sites';
+import {serviceHosts} from './news';
 const key = 'mynews-library-v1';
 const topicSchema=z.object({name:z.string().trim().min(1).max(40),keywords:z.string().trim().min(1).max(300)});
 const articleSchema=z.object({id:z.string(),url:z.string().transform(safeUrl),title:z.string().trim().min(1).max(500),excerpt:z.string().max(1000),source:z.string().max(200),date:z.string().max(100),topic:z.string().max(40)});
@@ -31,13 +32,13 @@ export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[
  const version=state.starterSitesVersion??0;
  if(version<starterSitesVersion){
   const host=(url:string)=>new URL(url).hostname.replace(/^www\./,'');
-  // Browsers stuck before version 2 still carry publishers that were added
-  // automatically and then withdrawn. Drop those before topping up, or they
-  // would look like the reader put them back.
   if(version>0&&version<2){
    const withdrawn=new Set(['technologyreview.com','sciencenews.org']);
    state.sites=state.sites.filter(s=>!withdrawn.has(host(s.url)));
   }
+  // Publishers that used to be added to every library are built-in services
+  // now, so drop the stored copies rather than listing each of them twice.
+  state.sites=state.sites.filter(s=>!serviceHosts.has(host(s.url)));
   const hosts=new Set(state.sites.map(s=>host(s.url)));
   state.sites=[...state.sites,...starterSites.filter(s=>!hosts.has(host(s.url)))].slice(0,30);
   state.starterSitesVersion=starterSitesVersion;

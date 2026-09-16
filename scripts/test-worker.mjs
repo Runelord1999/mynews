@@ -83,6 +83,28 @@ assert.equal((await article('https://news.example/story')).status, 429);
 limiterAllows = true;
 globalThis.fetch = realFetch2;
 
+// Several publishers are searched in one query rather than one each.
+let lastSearch = '';
+const realFetch0 = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (url.includes('bing.com/news/search')) {
+    lastSearch = decodeURIComponent(new URL(url).searchParams.get('q'));
+    return new Response('<rss><item><title>Story</title><link>https://apnews.com/a</link><description>Body</description></item></rss>');
+  }
+  return realFetch0(input, init);
+};
+const grouped = await worker.fetch(new Request('https://api.test/api/feed?' + new URLSearchParams({q: 'AI', provider: 'bing', site: 'apnews.com,reuters.com,bbc.co.uk'}), {headers: {Origin: pages}}), env());
+assert.equal(grouped.status, 200);
+assert.equal(lastSearch, '(AI) (site:apnews.com OR site:reuters.com OR site:bbc.co.uk)', 'one query covers every selected publisher');
+await worker.fetch(new Request('https://api.test/api/feed?' + new URLSearchParams({q: 'AI', provider: 'bing'}), {headers: {Origin: pages}}), env());
+assert.equal(lastSearch, 'AI', 'no publishers selected leaves the query alone');
+
+// Each hostname is still validated, and the list is capped.
+assert.equal((await worker.fetch(new Request('https://api.test/api/feed?' + new URLSearchParams({q: 'AI', provider: 'bing', site: 'apnews.com,not a host'}), {headers: {Origin: pages}}), env())).status, 400);
+assert.equal((await worker.fetch(new Request('https://api.test/api/feed?' + new URLSearchParams({q: 'AI', provider: 'bing', site: Array.from({length: 16}, (_, i) => 'h' + i + '.example').join(',')}), {headers: {Origin: pages}}), env())).status, 400);
+globalThis.fetch = realFetch0;
+
 // Site feeds: the browser names the address, so the Worker validates it.
 const feedCalls = [];
 const realFetch = globalThis.fetch;
@@ -118,6 +140,7 @@ assert.equal(feedCalls.length, before, 'no request leaves the Worker for a refus
 
 // A subdomain of the saved site is allowed.
 assert.equal((await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/rss'})).status, 200);
+assert.equal((await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com,other.com', feed: 'https://example.com/rss'})).status, 400, 'a feed names one site');
 globalThis.fetch = realFetch;
 
 // Saving requires a usable ID and an owner name.
@@ -222,4 +245,4 @@ assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404)
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
 assert.equal(count(), 0);
 
-console.log('PASS: routing, CORS, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');
+console.log('PASS: routing, CORS, grouped site queries, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

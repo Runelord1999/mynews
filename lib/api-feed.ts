@@ -28,15 +28,19 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
  const site = params.get('site')?.trim() || '';
  const fail = (error: string, status: number) => Response.json({error}, {status, headers: {...cors, 'Cache-Control': 'no-store'}});
  const feed = params.get('feed')?.trim() || '';
- if (!q || q.length > 300 || !['bing', 'google', 'hackernews', 'sitefeed'].includes(provider) || site.length > 253 || (site && !/^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/i.test(site))) return fail('Invalid keywords or source.', 400);
- if (provider === 'sitefeed' && (!feed || feed.length > 4096 || !site)) return fail('A site feed needs its website and feed address.', 400);
+ // One request can carry several hostnames so a reader selecting a dozen
+ // publishers still costs one query per engine rather than a dozen.
+ const hosts = site ? site.split(',').map(h => h.trim()).filter(Boolean) : [];
+ const validHost = (h: string) => h.length <= 253 && /^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/i.test(h);
+ if (!q || q.length > 300 || !['bing', 'google', 'hackernews', 'sitefeed'].includes(provider) || hosts.length > 15 || !hosts.every(validHost)) return fail('Invalid keywords or source.', 400);
+ if (provider === 'sitefeed' && (!feed || feed.length > 4096 || hosts.length !== 1)) return fail('A site feed needs its website and feed address.', 400);
  try {
   let articles: Article[] = [];
-  const search = site ? '(' + q + ') site:' + site : q;
+  const search = hosts.length ? '(' + q + ') (' + hosts.map(h => 'site:' + h).join(' OR ') + ')' : q;
   if (provider === 'sitefeed') {
-   let target; try {target = safeFeedUrl(feed, site);} catch {return fail('That feed address cannot be used.', 400);}
+   let target; try {target = safeFeedUrl(feed, hosts[0]);} catch {return fail('That feed address cannot be used.', 400);}
    const xml = await readRemote(target);
-   articles = parseFeed(xml, q).filter(a => matchesKeywords(a, q)).map(a => ({...a, provider: site}));
+   articles = parseFeed(xml, q).filter(a => matchesKeywords(a, q)).map(a => ({...a, provider: hosts[0]}));
   } else if (provider === 'hackernews') {
    const terms = q.split(/\s+OR\s+/).map(t => t.trim()).filter(Boolean); if (terms.length > 10) throw Error('Too many keyword terms');
    const results = await Promise.all(terms.map(async term => {
@@ -45,7 +49,7 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
      try {
       const url = safeUrl(hit.url || 'https://news.ycombinator.com/item?id=' + hit.objectID);
       const host = new URL(url).hostname;
-      if (site && host !== site && !host.endsWith('.' + site)) return [];
+      if (hosts.length && !hosts.some(h => host === h || host.endsWith('.' + h))) return [];
       return [{id: url, url, title: plain(hit.title || ''), excerpt: hit.story_text ? summarise(hit.story_text) : 'Discussed on Hacker News · ' + hit.points + ' points · ' + hit.num_comments + ' comments. Open the original story for the full article.', source: host.replace(/^www\./, ''), date: hit.created_at, topic: q, provider: 'Hacker News'}];
      } catch {return [];}
     });

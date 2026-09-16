@@ -12,14 +12,14 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/u
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {Toaster,toast} from 'sonner';
-import {defaults,safeUrl,allSources,defaultSources,engineIds,siteSourceId,type Topic,type Article,type NewsSite} from '@/lib/news';
+import {defaults,safeUrl,allSources,defaultSources,engineIds,type Topic,type Article,type NewsSite} from '@/lib/news';
 import {readLibrary,writeLibrary,feedEndpoint,articleEndpoint,readFeedCache,writeFeedCache,restoreBackup,type SettingsBackup} from '@/lib/browser-library';
 export default function Newsroom(){
  const [sites,setSites]=useState<NewsSite[]>([]),[sitesOpen,setSitesOpen]=useState(false),[sources,setSources]=useState<string[]>([]);
  function chooseSources(next:string[]){setSources(next);try{localStorage.setItem('mynews-sources',JSON.stringify(next));}catch{}}
 
  const [pendingBackup,setPendingBackup]=useState<SettingsBackup|null>(null);
- function confirmRestore(){if(!pendingBackup)return;try{const restored=restoreBackup(pendingBackup);setTopics(restored.topics);setSites(restored.sites);chooseSources(defaultSources(restored.sites));setSaved(restored.articles);adjustFont(restored.fontSize);setLibraryReady(true);setLibraryError('');setSigned(true);setTab('All stories');setPendingBackup(null);toast.success('Sites, topics, saved URLs, and text size restored.');}catch{toast.error('Could not restore. Browser storage may be full or unavailable.');}}
+ function confirmRestore(){if(!pendingBackup)return;try{const restored=restoreBackup(pendingBackup);setTopics(restored.topics);setSites(restored.sites);chooseSources(defaultSources());setSaved(restored.articles);adjustFont(restored.fontSize);setLibraryReady(true);setLibraryError('');setSigned(true);setTab('All stories');setPendingBackup(null);toast.success('Sites, topics, saved URLs, and text size restored.');}catch{toast.error('Could not restore. Browser storage may be full or unavailable.');}}
 
  // Article text is fetched only when a reader asks for it, and the Worker
  // shares one read with everyone who opens the same link.
@@ -40,7 +40,7 @@ export default function Newsroom(){
  function adjustFont(n:number){const size=Math.max(12,Math.min(24,n));setFontSize(size);try{localStorage.setItem('mynews-font-size',String(size));}catch{}}
 
  const [topics,setTopics]=useState<Topic[]>(defaults),[saved,setSaved]=useState<Article[]>([]),[feed,setFeed]=useState<Article[]>([]),[tab,setTab]=useState('All stories'),[loading,setLoading]=useState(true),[error,setError]=useState(''),[signed,setSigned]=useState(false),[libraryReady,setLibraryReady]=useState(false),[libraryError,setLibraryError]=useState(''),[refresh,setRefresh]=useState(0),[fetchedAt,setFetchedAt]=useState(''),[dialog,setDialog]=useState<'article'|'topics'|null>(null),[draft,setDraft]=useState<Topic[]>(defaults),[busy,setBusy]=useState(false),[articleTopic,setArticleTopic]=useState('General');
- useEffect(()=>{try{const data=readLibrary();setSaved(data.articles);setTopics(data.topics);setSites(data.sites);let picked:string[]|null=null;try{const raw=localStorage.getItem('mynews-sources');if(raw)picked=JSON.parse(raw);}catch{}const valid=new Set(allSources(data.sites).map(x=>x.id));setSources(Array.isArray(picked)?picked.filter(x=>valid.has(x)):defaultSources(data.sites));setSigned(true);setLibraryReady(true);}catch{setLibraryError('Browser storage is unavailable. Allow site storage to save articles and topics.');setLoading(false);}},[]);
+ useEffect(()=>{try{const data=readLibrary();setSaved(data.articles);setTopics(data.topics);setSites(data.sites);let picked:string[]|null=null;try{const raw=localStorage.getItem('mynews-sources');if(raw)picked=JSON.parse(raw);}catch{}const valid=new Set(allSources(data.sites).map(x=>x.id));setSources(Array.isArray(picked)?picked.filter(x=>valid.has(x)):defaultSources());setSigned(true);setLibraryReady(true);}catch{setLibraryError('Browser storage is unavailable. Allow site storage to save articles and topics.');setLoading(false);}},[]);
  // Stories are fetched only when asked for: pressing Refresh news, or opening
  // a source selection that has nothing cached. Reopening the tab restores the
  // last edition rather than searching again.
@@ -57,18 +57,19 @@ export default function Newsroom(){
  const controller=new AbortController();
  setLoading(true);setError('');
  // Each chosen source becomes its own set of requests: an engine searches
- // every topic, a site with a feed is read directly, and a site without one
- // is searched through the chosen engines restricted to its hostname.
+ // every topic, a source with a feed is read from that feed, and the ones
+ // that have to be searched are combined into a single site-restricted query
+ // per engine, so selecting twelve costs no more requests than selecting three.
  const chosen=new Set(sources);
- const chosenEngines=engineIds.filter(id=>chosen.has(id));
- const chosenSites=sites.filter(x=>chosen.has(siteSourceId(x)));
- const feedSites=chosenSites.filter(x=>x.feedUrl);
- const searchSites=chosenSites.filter(x=>!x.feedUrl);
+ const picked=allSources(sites).filter(x=>chosen.has(x.id));
+ const chosenEngines=picked.filter(x=>x.kind==='engine').map(x=>x.id);
+ const feedSources=picked.filter(x=>x.kind==='feed'&&x.feedUrl&&x.url);
+ const searchHosts=picked.filter(x=>x.kind==='search'&&x.url).map(x=>new URL(x.url!).hostname).slice(0,15);
  const searchEngines=chosenEngines.length?chosenEngines:engineIds;
  const jobs=[
   ...topics.flatMap(t=>chosenEngines.map(p=>({topic:t,provider:p,feed:'',site:''}))),
-  ...topics.flatMap(t=>feedSites.map(x=>({topic:t,provider:'sitefeed',feed:x.feedUrl,site:new URL(x.url).hostname}))),
-  ...topics.flatMap(t=>searchSites.flatMap(x=>searchEngines.map(p=>({topic:t,provider:p,feed:'',site:new URL(x.url).hostname})))),
+  ...topics.flatMap(t=>feedSources.map(x=>({topic:t,provider:'sitefeed',feed:x.feedUrl!,site:new URL(x.url!).hostname}))),
+  ...(searchHosts.length?topics.flatMap(t=>searchEngines.map(p=>({topic:t,provider:p,feed:'',site:searchHosts.join(',')}))):[]),
  ];
  if(!jobs.length){setFeed([]);setLoading(false);setError('No sources are selected. Choose at least one under Sources.');return;}
  Promise.allSettled(jobs.map(async job=>{const q=job.topic.keywords.split(',').map(k=>k.trim()).filter(Boolean).join(' OR ');const params=new URLSearchParams({q,provider:job.provider,...(job.feed?{feed:job.feed}:{}),...(job.site?{site:job.site}:{})});const r=await fetch(feedEndpoint()+'?'+params,{signal:controller.signal});const data=await r.json() as {error:string;articles:Article[]};if(!r.ok)throw Error(data.error);return data.articles.map(a=>({...a,topic:job.topic.name}));})).then(results=>{

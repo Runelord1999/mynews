@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds } from '../lib/news.ts';
+import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers } from '../lib/news.ts';
 const example = '<rss><item><title>A &amp; B</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Farticle</link><description>&lt;b&gt;Useful&lt;/b&gt; excerpt</description><News:Source>Example</News:Source></item><item><title>Bad</title><link>javascript:alert(1)</link></item></rss>';
 const parsed = parseFeed(example, 'OpenAI');
 assert.equal(parsed.length, 1);
@@ -28,19 +28,24 @@ assert.equal(parsedAtom[0].excerpt, 'Body from an Atom feed');
 // A short teaser is left exactly as it is, with no ellipsis.
 assert.equal(summarise('<p>Just  a   teaser</p>'), 'Just a teaser');
 assert.equal(summarise('one two three', 2), 'one two…');
-// Sources cover the engines and every saved site, in that order.
-const feedSite={name:'Ars Technica',url:'https://arstechnica.com/',searchUrl:'',feedUrl:'https://arstechnica.com/feed/'};
-const plainSite={name:'Associated Press',url:'https://apnews.com/',searchUrl:'',feedUrl:''};
-const list = allSources([feedSite, plainSite]);
-assert.deepEqual(list.map(s => s.id), [...engineIds, siteSourceId(feedSite), siteSourceId(plainSite)]);
-assert.equal(list.find(s => s.id === siteSourceId(feedSite)).kind, 'feed');
-assert.equal(list.find(s => s.id === siteSourceId(plainSite)).kind, 'search', 'a site without a feed is searched');
-assert.equal(allSources([]).length, 3, 'the engines are always offered');
+// Everything shipped is a service; only what a reader adds is "their" site.
+assert.equal(services.length, 12, 'three indexes plus nine publishers');
+assert.equal(publishers.length, 9);
+assert.deepEqual(services.slice(0, 3).map(s => s.id), engineIds);
+assert.ok(services.every(s => s.id && s.name && s.hint));
+assert.equal(services.find(s => s.name === 'Ars Technica').kind, 'feed', 'a shipped feed is read directly');
+assert.equal(services.find(s => s.name === 'Reuters').kind, 'search', 'the rest are searched by site');
+assert.deepEqual(defaultSources(), services.map(s => s.id), 'everything shipped starts selected');
 
-// The default selection reproduces what the reader did before sources became
-// selectable: every engine, plus sites that publish a feed.
-assert.deepEqual(defaultSources([feedSite, plainSite]), [...engineIds, siteSourceId(feedSite)]);
-assert.deepEqual(defaultSources([]), engineIds);
-assert.ok(siteSourceId(feedSite).startsWith('site:'), 'site ids cannot collide with engine ids');
+// A fresh library adds nothing of its own, so Your Sites starts empty.
+assert.deepEqual(allSources([]).map(s => s.id), services.map(s => s.id));
+
+// A site the reader adds appears after the services and cannot collide.
+const own = {name: 'My Blog', url: 'https://example.com/', searchUrl: '', feedUrl: ''};
+const withOwn = allSources([own]);
+assert.equal(withOwn.length, 13);
+assert.equal(withOwn[12].id, siteSourceId(own));
+assert.ok(!services.some(s => s.id === siteSourceId(own)));
+assert.ok(services.every(s => s.id.startsWith('service:') || engineIds.includes(s.id)));
 
 console.log('PASS: RSS and Atom parsing, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');

@@ -34,23 +34,35 @@ export function parseFeed(xml:string,topic:string,limit=summaryWords):Article[] 
  });
 }
 
-// Every place a story can come from, in one list: the search engines, plus
-// each saved site. A site with a feed is read directly; a site without one is
-// searched through the engines, restricted to its hostname.
+// Every place a story can come from. The three aggregators and the publishers
+// this reader ships with are all services: they need no setup and are the same
+// for everyone. "Your sites" holds only what a reader adds themselves.
 export type SourceKind='engine'|'feed'|'search';
-export type Source={id:string;name:string;kind:SourceKind;hint:string};
+export type Source={id:string;name:string;kind:SourceKind;hint:string;url?:string;feedUrl?:string};
+const publisher=(name:string,url:string,feedUrl=''):Source=>({id:'service:'+new URL(url).hostname.replace(/^www\./,''),name,kind:feedUrl?'feed':'search',hint:feedUrl?'Full-text feed':'Searched by site',url,feedUrl});
 export const engines:Source[]=[
  {id:'bing',name:'Bing News',kind:'engine',hint:'News index'},
  {id:'google',name:'Google News',kind:'engine',hint:'News index'},
  {id:'hackernews',name:'Hacker News',kind:'engine',hint:'Discussions'},
 ];
+export const publishers:Source[]=[
+ publisher('Associated Press','https://apnews.com/'),
+ publisher('Ars Technica','https://arstechnica.com/','https://arstechnica.com/feed/'),
+ publisher('Futurism','https://futurism.com/','https://futurism.com/feed'),
+ publisher('BBC','https://www.bbc.co.uk/news'),
+ publisher('Reuters','https://www.reuters.com/'),
+ publisher('Guardian','https://www.theguardian.com/international'),
+ publisher('Aljazeera','https://www.aljazeera.com/'),
+ publisher('CNA','https://www.channelnewsasia.com/'),
+ publisher('CBC','https://www.cbc.ca/news'),
+];
+export const services:Source[]=[...engines,...publishers];
 export const engineIds=engines.map(e=>e.id);
+export const serviceHosts=new Set(publishers.map(p=>new URL(p.url!).hostname.replace(/^www\./,'')));
 export function siteSourceId(site:NewsSite){return 'site:'+site.url;}
 export function allSources(sites:NewsSite[]):Source[]{
- return [...engines,...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site'}))];
+ return [...services,...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl}))];
 }
-// Matches what the reader did before sources became selectable: every engine,
-// plus the sites that publish a feed. Site searches stay off until asked for.
-export function defaultSources(sites:NewsSite[]){
- return [...engineIds,...sites.filter(s=>s.feedUrl).map(siteSourceId)];
-}
+// Everything the reader ships with is on to begin with. Sites a reader adds
+// are opted into deliberately.
+export function defaultSources(){return services.map(s=>s.id);}

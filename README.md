@@ -90,7 +90,7 @@ The Worker then refuses admin requests without the key, and the panel shows a ke
 
 ## Website searches and news sources
 
-Add a site saves a website URL with a name, an optional native search URL containing {query}, and an optional full-text feed URL. Your Sites provides a direct site link, a keyword-search link, and a site filter for aggregated stories. Without a native search template, the search link opens Google restricted to that website. Selecting a topic supplies that topic's keywords; All stories supplies all topics. Saved sites are included in backups; older backups still restore successfully.
+Add a site saves a website URL with a name, an optional native search URL containing {query}, and an optional full-text feed URL. Added sites appear under Your sites in the Sources menu. Your Sites provides a direct site link, a keyword-search link, and a site filter for aggregated stories. Without a native search template, the search link opens Google restricted to that website. Selecting a topic supplies that topic's keywords; All stories supplies all topics. Saved sites are included in backups; older backups still restore successfully.
 
 ### Full-text feeds and article summaries
 
@@ -114,15 +114,15 @@ A site with a full-text feed is read directly from that feed. A site without one
 
 The site chips under Your Search Source Sites toggle the same selection, so a site can be switched on or off without opening the menu. Google RSS may provide only a headline; Hacker News cards include discussion metadata when no excerpt exists. Google News article links may redirect to the publisher. Site filters use the news indexes and do not scrape or guarantee coverage of every page. Native-site search links open in a new tab. Search templates must use the same hostname as the saved site. Hacker News supports up to ten OR-separated terms per topic.
 
-## Sites a fresh browser starts with
+## Sources
 
-Mynews ships with Associated Press, Ars Technica, Futurism, BBC, Reuters, Guardian, Aljazeera, CNA and CBC as editable site searches. Anyone opening the public URL gets that set without restoring anything, so sharing the link shares the sources. Together with the three news services, a fresh browser shows twelve sources.
+Twelve sources ship with the reader and appear under **News services**: Bing News, Google News RSS and Hacker News (Algolia), plus Associated Press, Ars Technica, Futurism, BBC, Reuters, Guardian, Aljazeera, CNA and CBC. They need no setup, are the same for everyone, and are all selected to begin with — so sharing the URL shares the sources, and a shared Settings ID carries no site list at all.
 
-Existing browsers are topped up once with anything they are missing, matched by hostname, and sites you added yourself are kept. A site you delete stays deleted. Restoring a backup replaces the list with exactly what the backup holds and does not add shipped sites on top.
+**Your sites** holds only websites a reader adds themselves, and starts empty. A library that stored the shipped publishers before they became services drops those copies once, so nothing is listed twice; sites the reader added are kept.
 
-These are publisher search targets, not live-feed engines, unless a site carries a **Full-text feed URL**. Ars Technica and Futurism ship with one; the rest are searched through the news services restricted to their hostname. A feed address must be on the same hostname as the site, which rules out publishers that serve their feed from a separate host.
+Any combination can be selected at once, and the selection is remembered in this browser. Ars Technica and Futurism carry a full-text feed and are read directly from it. The rest are searched through the selected news indexes restricted to their hostnames — all of them in a single `site:a OR site:b` query per index, so selecting twelve sources costs no more requests than selecting three. Selecting only publishers and no index searches them through all three. Clearing the selection entirely fetches nothing and says so.
 
-No outlet is infallible, and commentary should be distinguished from reported evidence.
+A feed address must be on the same hostname as its site, which rules out publishers that serve their feed from a separate host.
 
 Selection references:
 - Reuters standards: https://reutersagency.com/about/standards-values/

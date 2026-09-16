@@ -5,22 +5,29 @@ globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.se
 const result=await build({entryPoints:['lib/browser-library.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const lib=await import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
 assert.equal(lib.readLibrary().topics.length,6);
-assert.equal(lib.readLibrary().sites.length,9,'a fresh browser starts with the full publisher list');
-assert.ok(lib.readLibrary().sites.some(s=>s.name==='Reuters'),'Reuters ships as a default and is not stripped');
-assert.ok(lib.readLibrary().sites.some(s=>s.name==='CNA'));
-lib.writeLibrary({action:'sites',sites:lib.readLibrary().sites.filter(s=>s.name!=='Futurism')});
-assert.equal(lib.readLibrary().sites.length,8,'Removed starter must not reappear');
+assert.deepEqual(lib.readLibrary().sites,[],'shipped publishers are services now, not the reader\u2019s sites');
+lib.writeLibrary({action:'sites',sites:[{name:'My Blog',url:'https://example.org/',searchUrl:'',feedUrl:''}]});
+assert.equal(lib.readLibrary().sites.length,1,'a site the reader adds is kept');
 const current=lib.readLibrary();
-// A browser left at version 1 loses the withdrawn publishers, keeps its own,
-// and is topped up with everything now shipped.
-memory.set('mynews-library-v1',JSON.stringify({...current,starterSitesVersion:1,sites:[{name:'Custom',url:'https://example.org/',searchUrl:'',feedUrl:''},...['technologyreview.com','sciencenews.org'].map(host=>({name:host,url:'https://www.'+host+'/',searchUrl:'',feedUrl:''}))]}));
+// A library that stored the publishers before they became services loses the
+// stored copies, so they are not listed twice, and keeps everything else.
+memory.set('mynews-library-v1',JSON.stringify({...current,starterSitesVersion:3,sites:[
+ {name:'Custom',url:'https://example.org/',searchUrl:'',feedUrl:''},
+ {name:'Reuters',url:'https://www.reuters.com/',searchUrl:'',feedUrl:''},
+ {name:'BBC',url:'https://www.bbc.co.uk/news',searchUrl:'',feedUrl:''},
+ {name:'Ars Technica',url:'https://arstechnica.com/',searchUrl:'',feedUrl:''},
+]}));
 const migrated=lib.readLibrary();
-assert.ok(migrated.sites.some(s=>s.name==='Custom'),'a site the reader added survives');
-assert.ok(!migrated.sites.some(s=>s.url.includes('technologyreview')),'withdrawn publishers are dropped');
-assert.ok(!migrated.sites.some(s=>s.url.includes('sciencenews')),'withdrawn publishers are dropped');
-assert.equal(migrated.sites.length,10,'the shipped list is added alongside');
-assert.ok(migrated.sites.some(s=>s.name==='Reuters'));
-assert.equal(lib.readLibrary().sites.length,10,'the top-up runs once, not on every read');
+assert.deepEqual(migrated.sites.map(s=>s.name),['Custom'],'only the reader\u2019s own site remains');
+assert.equal(lib.readLibrary().sites.length,1,'the clean-up runs once, not on every read');
+
+// A library still at version 1 also loses the publishers withdrawn back then.
+memory.set('mynews-library-v1',JSON.stringify({...current,starterSitesVersion:1,sites:[
+ {name:'Custom',url:'https://example.org/',searchUrl:'',feedUrl:''},
+ {name:'technologyreview.com',url:'https://www.technologyreview.com/',searchUrl:'',feedUrl:''},
+ {name:'Guardian',url:'https://www.theguardian.com/international',searchUrl:'',feedUrl:''},
+]}));
+assert.deepEqual(lib.readLibrary().sites.map(s=>s.name),['Custom']);
 
 const article={id:'https://example.com/',url:'https://example.com/',title:'Saved story',excerpt:'An excerpt',source:'example.com',date:new Date().toISOString(),topic:'OpenAI'};
 lib.writeLibrary({action:'save',article});
