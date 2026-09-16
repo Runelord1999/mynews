@@ -1,25 +1,12 @@
 import {parseFeed, plain, safeUrl, summarise, type Article} from './news';
+import {publicHttpUrl, readRemote} from './safe-remote';
 import {corsHeaders} from './api-cors';
-
-async function readRemote(url: string) {
- const response = await fetch(url, {signal: AbortSignal.timeout(12000)});
- if (!response.ok) throw Error('Feed unavailable');
- const reader = response.body?.getReader(); if (!reader) throw Error('Empty response');
- let size = 0, text = ''; const decoder = new TextDecoder();
- while (true) {
-  const {done, value} = await reader.read(); if (done) break;
-  size += value.length; if (size > 1500000) {await reader.cancel(); throw Error('Feed too large');}
-  text += decoder.decode(value, {stream: true});
- }
- return text + decoder.decode();
-}
 
 // The feed URL comes from the browser, so it is checked here rather than
 // trusted: same host as the saved site, public address only, http(s) only.
 function safeFeedUrl(feed: string, site: string) {
- const url = new URL(safeUrl(feed));
+ const url = publicHttpUrl(feed);
  if (url.hostname !== site && !url.hostname.endsWith('.' + site)) throw Error('Feed must be on the same website.');
- if (/^(localhost$|127\.|10\.|192\.168\.|169\.254\.|0\.|\[|::)/i.test(url.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname)) throw Error('Feed must be a public address.');
  return url.href;
 }
 

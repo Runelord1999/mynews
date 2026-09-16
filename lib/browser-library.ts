@@ -67,3 +67,6 @@ export function apiBase(){
 export function feedEndpoint(){return apiBase()+'/api/feed';}
 export function settingsEndpoint(){return apiBase()+'/api/settings';}
 export function adminEndpoint(){return apiBase()+'/api/admin';}
+export function articleEndpoint(){return apiBase()+'/api/article';}
+// Shown in error messages so a build pointed at the wrong backend is obvious.
+export function apiOrigin(){return apiBase()||location.origin;}

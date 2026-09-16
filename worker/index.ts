@@ -4,6 +4,7 @@
 import {handleFeed} from '../lib/api-feed';
 import {handleSettings, type SettingsDb, type SettingsRateLimiter} from '../lib/api-settings';
 import {handleAdmin} from '../lib/api-admin';
+import {handleArticle} from '../lib/api-article';
 import {resolveOrigins} from '../lib/api-cors';
 
 export type WorkerEnv = {
@@ -19,6 +20,7 @@ const mynewsApi = {
   const allowedOrigins = resolveOrigins(env.ALLOWED_ORIGINS);
   if (pathname === '/api/feed') return handleFeed(request, {allowedOrigins});
   if (pathname === '/api/settings') return handleSettings(request, {db: env.DB, allowedOrigins, rateLimiter: env.SETTINGS_RATE_LIMITER});
+  if (pathname === '/api/article') return handleArticle(request, {db: env.DB, allowedOrigins, rateLimiter: env.SETTINGS_RATE_LIMITER});
   if (pathname === '/api/admin') return handleAdmin(request, {db: env.DB, allowedOrigins, adminKey: env.ADMIN_KEY, rateLimiter: env.SETTINGS_RATE_LIMITER});
   if (pathname === '/api/health') return Response.json({ok: true, database: Boolean(env.DB), adminKeyRequired: Boolean(env.ADMIN_KEY)}, {headers: {'Cache-Control': 'no-store'}});
   return new Response('Not found', {status: 404, headers: {'Cache-Control': 'no-store'}});

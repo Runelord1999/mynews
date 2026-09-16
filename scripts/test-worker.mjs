@@ -35,6 +35,54 @@ assert.equal(feed.status, 400);
 assert.equal(feed.headers.get('Vary'), 'Origin', 'cacheable feed responses must vary on Origin');
 assert.equal((await worker.fetch(new Request('https://api.test/api/feed?q=', {headers: {Origin: 'https://evil.test'}}), env())).headers.get('Access-Control-Allow-Origin'), null);
 
+// On-demand article reads: fetched once, then served from the cache.
+const articlePage = `<html><head><meta property="og:description" content="Meta fallback"/></head><body>
+ <nav><p>${'Navigation clutter that is long enough to survive the length filter. '.repeat(2)}</p></nav>
+ <article>${Array.from({length: 12}, (_, i) => '<p>' + Array.from({length: 30}, (_, j) => 'para' + i + 'word' + j).join(' ') + '</p>').join('')}</article>
+ <footer><p>${'Footer boilerplate that is also long enough to survive the filter. '.repeat(2)}</p></footer>
+</body></html>`;
+let articleFetches = 0;
+const realFetch2 = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (url === 'https://news.example/story') {articleFetches++; return new Response(articlePage);}
+  if (url === 'https://news.example/paywalled') {articleFetches++; return new Response('nope', {status: 403});}
+  if (url === 'https://news.example/empty') {articleFetches++; return new Response('<html><body><article></article></body></html>');}
+  return realFetch2(input, init);
+};
+const article = (url, e = env()) => worker.fetch(new Request('https://api.test/api/article', {method: 'POST', headers: headers(), body: JSON.stringify({url})}), e);
+
+const read = await article('https://news.example/story');
+assert.equal(read.status, 200);
+const readBody = await read.json();
+assert.equal(readBody.cached, false);
+assert.equal(readBody.words, 250, 'capped at 250 words');
+assert.ok(readBody.summary.startsWith('para0word0'), 'article body, not the nav');
+assert.ok(!readBody.summary.includes('Navigation clutter'), 'nav is dropped');
+assert.ok(!readBody.summary.includes('Footer boilerplate'), 'footer is dropped');
+
+// Second read is served from D1 without touching the publisher again.
+const fetchesAfterFirst = articleFetches;
+const again = await article('https://news.example/story');
+assert.equal((await again.json()).cached, true);
+assert.equal(articleFetches, fetchesAfterFirst, 'a cached article is not re-fetched');
+
+// Failures are reported, not cached as empty.
+assert.equal((await article('https://news.example/paywalled')).status, 502);
+assert.equal((await article('https://news.example/empty')).status, 422);
+
+// The same address guards as feeds apply.
+const beforeGuards = articleFetches;
+assert.equal((await article('http://127.0.0.1/admin')).status, 400);
+assert.equal((await article('http://192.168.0.1/')).status, 400);
+assert.equal((await article('file:///etc/passwd')).status, 400);
+assert.equal((await article('not a url')).status, 400);
+assert.equal(articleFetches, beforeGuards, 'no request leaves the Worker for a refused address');
+limiterAllows = false;
+assert.equal((await article('https://news.example/story')).status, 429);
+limiterAllows = true;
+globalThis.fetch = realFetch2;
+
 // Site feeds: the browser names the address, so the Worker validates it.
 const feedCalls = [];
 const realFetch = globalThis.fetch;
@@ -156,4 +204,4 @@ assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404)
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
 assert.equal(count(), 0);
 
-console.log('PASS: routing, CORS, site feeds with SSRF guards, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');
+console.log('PASS: routing, CORS, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

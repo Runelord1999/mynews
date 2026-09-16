@@ -9,3 +9,12 @@ CREATE TABLE IF NOT EXISTS settings (
 	updated_at text NOT NULL,
 	save_count integer NOT NULL DEFAULT 1
 );
+
+-- Article text read on demand, shared between everyone who opens the same link.
+CREATE TABLE IF NOT EXISTS article_summaries (
+	url_hash text PRIMARY KEY NOT NULL,
+	url text NOT NULL,
+	summary text NOT NULL,
+	words integer NOT NULL,
+	created_at text NOT NULL
+);

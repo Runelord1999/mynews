@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {exportBackup,parseBackup,settingsEndpoint,type SettingsBackup} from '@/lib/browser-library';
+import {exportBackup,parseBackup,settingsEndpoint,apiOrigin,type SettingsBackup} from '@/lib/browser-library';
 import {normaliseId,normaliseOwner,suggestId,validId,validOwner} from '@/lib/settings-id';
 
 export default function CloudSettings({fontSize,ready,onApply}:{fontSize:number;ready:boolean;onApply:(backup:SettingsBackup)=>void}){
@@ -18,7 +18,7 @@ export default function CloudSettings({fontSize,ready,onApply}:{fontSize:number;
    if(action==='save'&&!validOwner(owner))throw Error('Add an owner name of 2 to 60 characters so you can tell later who created this ID.');
    const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:token,...(action==='save'?{owner:normaliseOwner(owner),backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
    const data=await response.json() as {error?:string;backup?:unknown;owner?:string;saveCount?:number};
-   if(!response.ok)throw Error(data.error||'Could not reach online settings.');
+   if(!response.ok)throw Error((data.error||'Could not reach online settings.')+' ('+response.status+' from '+apiOrigin()+')');
    setId(token);try{localStorage.setItem('mynews-settings-id',token);}catch{}
    if(action==='apply'){
     if(data.owner){setOwner(data.owner);try{localStorage.setItem('mynews-settings-owner',data.owner);}catch{}}
@@ -27,7 +27,7 @@ export default function CloudSettings({fontSize,ready,onApply}:{fontSize:number;
     if(data.owner){setOwner(data.owner);try{localStorage.setItem('mynews-settings-owner',data.owner);}catch{}}
     note('Saved online under '+token+(data.saveCount&&data.saveCount>1?' (version '+data.saveCount+')':'')+', owned by '+(data.owner||normaliseOwner(owner))+'. Share this ID with anyone you want to give these settings to.','ok');
    }
-  }catch(error){note(error instanceof Error?error.message:'Could not reach online settings. Please try again.','error');}finally{setBusy(false);}
+  }catch(error){note((error instanceof Error?error.message:'Could not reach online settings.')+(error instanceof Error&&!error.message.includes(apiOrigin())?' (no reply from '+apiOrigin()+')':''),'error');}finally{setBusy(false);}
  }
  return <><button className="backup-button" onClick={()=>setOpen(true)}>Save Settings Online</button><Dialog open={open} onOpenChange={value=>{if(!busy)setOpen(value);}}><DialogContent className="editor"><DialogTitle>Save and share settings</DialogTitle><DialogDescription>Store your topics, source sites, reading list and text size under a Settings ID. Anyone with the ID can apply the same setup — like sharing a playlist.</DialogDescription>
  <div className="settings-id-row">

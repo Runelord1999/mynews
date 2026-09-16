@@ -102,6 +102,14 @@ Feeds are read by the Worker, which checks the address before fetching: same hos
 
 Card body text sits below the reading size and scrolls within the card, so a long summary does not stretch the grid. The text size slider still scales it.
 
+### Read more
+
+Cards outside the reading list carry a **Read more** button. It asks the Worker to read that one article and return up to 250 words of it, then shows that in place of the teaser. Nothing is fetched until a reader presses it, so a refresh stays as fast as before.
+
+The Worker validates the address the same way it validates a feed — public address, http or https only — reads at most 600 KB, drops scripts, navigation, headers, footers and asides, prefers the page's `<article>` or `<main>` element, and keeps the paragraphs. Pages with too little readable text fall back to their own meta description, and a page that returns nothing usable reports that rather than showing an empty card.
+
+Each result is stored in `article_summaries` keyed by a hash of the URL, so the second reader to open the same link gets it instantly and the publisher is not asked twice. Paywalled and bot-blocked publishers will fail; that is reported on the button and the card keeps its original teaser.
+
 Sources supports Bing News, Google News RSS, Hacker News (Algolia), or all three. Google RSS may provide only a headline; Hacker News cards include discussion metadata when no excerpt exists. Google News article links may redirect to the publisher. Site filters use the news indexes and do not scrape or guarantee coverage of every page. Native-site search links open in a new tab. Search templates must use the same hostname as the saved site. Hacker News supports up to ten OR-separated terms per topic.
 
 ## Seven starter publisher sites
