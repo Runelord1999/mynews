@@ -113,11 +113,15 @@ A site with a full-text feed is read directly from that feed. A site without one
 
 The site chips under Your Search Source Sites toggle the same selection, so a site can be switched on or off without opening the menu. Google RSS may provide only a headline; Hacker News cards include discussion metadata when no excerpt exists. Google News article links may redirect to the publisher. Site filters use the news indexes and do not scrape or guarantee coverage of every page. Native-site search links open in a new tab. Search templates must use the same hostname as the saved site. Hacker News supports up to ten OR-separated terms per topic.
 
-## Seven starter publisher sites
+## Sites a fresh browser starts with
 
-Mynews adds Reuters, Associated Press, BBC News, Ars Technica, MIT Technology Review, Science News, and Futurism as editable site searches. Together with the three aggregation services, a fresh browser shows ten entries. Existing custom sites are preserved and duplicate hostnames are skipped. This one-time addition respects later removals; restoring a backup preserves its exact website list.
+Mynews ships with Associated Press, Ars Technica, Futurism, BBC, Reuters, Guardian, Aljazeera, CNA and CBC as editable site searches. Anyone opening the public URL gets that set without restoring anything, so sharing the link shares the sources. Together with the three news services, a fresh browser shows twelve sources.
 
-The selection balances general reporting (Reuters, AP, BBC), technology reporting and analysis (Ars Technica, MIT Technology Review), science reporting (Science News), and emerging-technology coverage with perspective/opinion (Futurism). No outlet is infallible; commentary should be distinguished from reported evidence. These are publisher search targets, not seven new live-feed engines. Search results depend on the existing indexes.
+Existing browsers are topped up once with anything they are missing, matched by hostname, and sites you added yourself are kept. A site you delete stays deleted. Restoring a backup replaces the list with exactly what the backup holds and does not add shipped sites on top.
+
+These are publisher search targets, not live-feed engines, unless a site carries a **Full-text feed URL**. Ars Technica and Futurism ship with one; the rest are searched through the news services restricted to their hostname. A feed address must be on the same hostname as the site, which rules out publishers that serve their feed from a separate host.
+
+No outlet is infallible, and commentary should be distinguished from reported evidence.
 
 Selection references:
 - Reuters standards: https://reutersagency.com/about/standards-values/

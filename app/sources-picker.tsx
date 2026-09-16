@@ -7,7 +7,7 @@ export default function SourcesPicker({sites,sources,onChange}:{sites:NewsSite[]
  const list=allSources(sites);
  const chosen=new Set(sources);
  const active=list.filter(s=>chosen.has(s.id));
- const label=active.length===0?'No sources':active.length===list.length?'All sources':active.length===1?active[0].name:active.length+' sources';
+ const label=active.length===0?'No sources':active.length===list.length?'All sources ('+list.length+')':active.length===1?active[0].name:active.length+' of '+list.length+' sources';
  function toggle(id:string){onChange(chosen.has(id)?sources.filter(s=>s!==id):[...sources,id]);}
  const siteSources=list.filter(s=>s.kind!=='engine');
  const row=(s:{id:string;name:string;hint:string})=><button key={s.id} role="menuitemcheckbox" aria-checked={chosen.has(s.id)} className={'source-option '+(chosen.has(s.id)?'is-on':'')} onClick={()=>toggle(s.id)}>

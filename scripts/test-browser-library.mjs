@@ -5,13 +5,23 @@ globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.se
 const result=await build({entryPoints:['lib/browser-library.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const lib=await import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
 assert.equal(lib.readLibrary().topics.length,6);
-assert.equal(lib.readLibrary().sites.length,3);
+assert.equal(lib.readLibrary().sites.length,9,'a fresh browser starts with the full publisher list');
+assert.ok(lib.readLibrary().sites.some(s=>s.name==='Reuters'),'Reuters ships as a default and is not stripped');
+assert.ok(lib.readLibrary().sites.some(s=>s.name==='CNA'));
 lib.writeLibrary({action:'sites',sites:lib.readLibrary().sites.filter(s=>s.name!=='Futurism')});
-assert.equal(lib.readLibrary().sites.length,2,'Removed starter must not reappear');
+assert.equal(lib.readLibrary().sites.length,8,'Removed starter must not reappear');
 const current=lib.readLibrary();
-memory.set('mynews-library-v1',JSON.stringify({...current,starterSitesVersion:1,sites:[...current.sites,...['reuters.com','bbc.com','technologyreview.com','sciencenews.org'].map(host=>({name:host,url:'https://www.'+host+'/',searchUrl:''})),{name:'Custom',url:'https://example.org/',searchUrl:''}]}));
-assert.equal(lib.readLibrary().sites.length,3,'Migration removes paid defaults and preserves custom sites');
-assert.ok(lib.readLibrary().sites.some(s=>s.name==='Custom'));
+// A browser left at version 1 loses the withdrawn publishers, keeps its own,
+// and is topped up with everything now shipped.
+memory.set('mynews-library-v1',JSON.stringify({...current,starterSitesVersion:1,sites:[{name:'Custom',url:'https://example.org/',searchUrl:'',feedUrl:''},...['technologyreview.com','sciencenews.org'].map(host=>({name:host,url:'https://www.'+host+'/',searchUrl:'',feedUrl:''}))]}));
+const migrated=lib.readLibrary();
+assert.ok(migrated.sites.some(s=>s.name==='Custom'),'a site the reader added survives');
+assert.ok(!migrated.sites.some(s=>s.url.includes('technologyreview')),'withdrawn publishers are dropped');
+assert.ok(!migrated.sites.some(s=>s.url.includes('sciencenews')),'withdrawn publishers are dropped');
+assert.equal(migrated.sites.length,10,'the shipped list is added alongside');
+assert.ok(migrated.sites.some(s=>s.name==='Reuters'));
+assert.equal(lib.readLibrary().sites.length,10,'the top-up runs once, not on every read');
+
 const article={id:'https://example.com/',url:'https://example.com/',title:'Saved story',excerpt:'An excerpt',source:'example.com',date:new Date().toISOString(),topic:'OpenAI'};
 lib.writeLibrary({action:'save',article});
 lib.writeLibrary({action:'save',article});
@@ -60,6 +70,7 @@ assert.equal(lib.readFeedCache('all|'),null);
 
 memory.clear();
 const restored=lib.restoreBackup(lib.parseBackup(backup));
+assert.equal(lib.readLibrary().sites.length,restored.sites.length,'restoring a backup does not add shipped sites');
 assert.equal(restored.fontSize,14);
 assert.equal(lib.readLibrary().topics[0].name,'Research');
 assert.deepEqual(lib.readLibrary().articles,[article]);

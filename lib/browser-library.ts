@@ -1,6 +1,6 @@
 import {defaults, safeUrl, type Article, type Topic, type NewsSite} from './news';
 import {z} from 'zod';
-import {starterSites} from './starter-sites';
+import {starterSites, starterSitesVersion} from './starter-sites';
 const key = 'mynews-library-v1';
 const topicSchema=z.object({name:z.string().trim().min(1).max(40),keywords:z.string().trim().min(1).max(300)});
 const articleSchema=z.object({id:z.string(),url:z.string().transform(safeUrl),title:z.string().trim().min(1).max(500),excerpt:z.string().max(1000),source:z.string().max(200),date:z.string().max(100),topic:z.string().max(40)});
@@ -22,22 +22,25 @@ export function exportBackup(fontSize:number):string {
 }
 export function restoreBackup(backup:SettingsBackup) {
  const valid=parseBackup(JSON.stringify(backup));
- localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,starterSitesVersion:2}));
+ localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,starterSitesVersion}));
  return valid;
 }
 export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[]}{
  const raw=localStorage.getItem(key);
  const state=raw?librarySchema.parse(JSON.parse(raw)):{topics:defaults,articles:[],sites:[] as NewsSite[],starterSitesVersion:0};
- if(!state.starterSitesVersion){
-  const hosts=new Set(state.sites.map(s=>new URL(s.url).hostname.replace(/^www\./,'')));
-  state.sites=[...state.sites,...starterSites.filter(s=>!hosts.has(new URL(s.url).hostname.replace(/^www\./,'')))].slice(0,30);
-  state.starterSitesVersion=1;
-  localStorage.setItem(key,JSON.stringify(state));
- }
- if((state.starterSitesVersion??0)<2){
-  const paidHosts=new Set(['reuters.com','bbc.com','technologyreview.com','sciencenews.org']);
-  state.sites=state.sites.filter(s=>!paidHosts.has(new URL(s.url).hostname.replace(/^www\./,'')));
-  state.starterSitesVersion=2;
+ const version=state.starterSitesVersion??0;
+ if(version<starterSitesVersion){
+  const host=(url:string)=>new URL(url).hostname.replace(/^www\./,'');
+  // Browsers stuck before version 2 still carry publishers that were added
+  // automatically and then withdrawn. Drop those before topping up, or they
+  // would look like the reader put them back.
+  if(version>0&&version<2){
+   const withdrawn=new Set(['technologyreview.com','sciencenews.org']);
+   state.sites=state.sites.filter(s=>!withdrawn.has(host(s.url)));
+  }
+  const hosts=new Set(state.sites.map(s=>host(s.url)));
+  state.sites=[...state.sites,...starterSites.filter(s=>!hosts.has(host(s.url)))].slice(0,30);
+  state.starterSitesVersion=starterSitesVersion;
   localStorage.setItem(key,JSON.stringify(state));
  }
  return state;
