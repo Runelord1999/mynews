@@ -56,10 +56,17 @@ export async function handleSettings(request: Request, options: SettingsOptions)
    return reply({ok: true, id, deleted: true});
   }
 
-  if (input.action !== 'save') return reply({error: 'Invalid action.'}, 400);
+  if (input.action !== 'save') return reply({error: 'Invalid action "' + String(input.action ?? '') + '".'}, 400);
   const owner = normaliseOwner(String(input.owner ?? ''));
   if (!validOwner(owner)) return reply({error: 'Add an owner name of 2 to 60 characters so this ID can be traced back to whoever created it.'}, 400);
   let backup; try {backup = parseBackup(JSON.stringify(input.backup));} catch {return reply({error: 'Those settings could not be read. Nothing was saved.'}, 400);}
+
+  // Anyone holding an ID can overwrite it, so replacing someone else's saved
+  // settings has to be asked for rather than assumed.
+  const existing = await db.prepare('SELECT owner, updated_at, save_count FROM settings WHERE id = ?').bind(id).first<{owner: string; updated_at: string; save_count: number}>();
+  if (existing && input.overwrite !== true) {
+   return reply({error: 'This ID already holds settings.', conflict: true, existing: {id, owner: existing.owner, updatedAt: existing.updated_at, saveCount: existing.save_count}}, 409);
+  }
   // The owner is whoever created the ID, so a later save never rewrites it.
   await db.prepare(
    `INSERT INTO settings (id, owner, data, created_at, updated_at, save_count) VALUES (?, ?, ?, ?, ?, 1)

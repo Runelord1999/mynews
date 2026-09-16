@@ -128,6 +128,24 @@ assert.equal((await settings({action: 'save', id: 'no', owner: 'Daryl', backup})
 assert.equal((await settings({action: 'save', id: 'has spaces', owner: 'Daryl', backup})).status, 400);
 assert.equal(count(), 1);
 
+// Saving over an ID that already holds settings has to be asked for.
+const clash = await settings({action: 'save', id: 'daryl-markets', owner: 'Someone Else', backup: {...backup, fontSize: 22}});
+assert.equal(clash.status, 409);
+const clashBody = await clash.json();
+assert.equal(clashBody.conflict, true);
+assert.equal(clashBody.existing.owner, 'Daryl', 'the refusal names who saved it');
+assert.ok(clashBody.existing.updatedAt);
+assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).backup.fontSize, 14, 'a refused save changes nothing');
+
+// Confirming replaces it.
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Someone Else', overwrite: true, backup: {...backup, fontSize: 22}})).status, 200);
+assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).backup.fontSize, 22);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', overwrite: true, backup})).status, 200);
+
+// A first save needs no confirmation.
+assert.equal((await settings({action: 'save', id: 'brand-new-id', owner: 'Daryl', backup})).status, 200);
+assert.equal((await settings({action: 'delete', id: 'brand-new-id'})).status, 200);
+
 // IDs are stored in plain text and match case-insensitively.
 assert.equal(sqlite.prepare('SELECT id FROM settings').get().id, 'daryl-markets');
 assert.equal((await (await settings({action: 'apply', id: 'DARYL-Markets'})).json()).backup.fontSize, 14);
@@ -146,17 +164,17 @@ assert.equal(shared.owner, 'Daryl');
 assert.equal((await settings({action: 'apply', id: 'never-saved-id'})).status, 404);
 
 // Re-saving updates in place, counts the version, and keeps the creator.
-const resaved = await (await settings({action: 'save', id: 'daryl-markets', owner: 'Someone Else', backup: {...backup, fontSize: 18}})).json();
-assert.equal(resaved.saveCount, 2);
+const resaved = await (await settings({action: 'save', id: 'daryl-markets', owner: 'Someone Else', overwrite: true, backup: {...backup, fontSize: 18}})).json();
+assert.equal(resaved.saveCount, 4);
 assert.equal(resaved.owner, 'Daryl', 'the owner is whoever created the ID');
 assert.equal(count(), 1);
 assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).backup.fontSize, 18);
 
 // Rubbish payloads never overwrite good settings.
-assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup: {...backup, sites: [{name: 'Bad', url: 'javascript:alert(1)'}]}})).status, 400);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', overwrite: true, backup: {...backup, sites: [{name: 'Bad', url: 'javascript:alert(1)'}]}})).status, 400);
 assert.equal((await (await settings({action: 'apply', id: 'daryl-markets'})).json()).backup.fontSize, 18);
-assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup: {...backup, extra: 'x'.repeat(128 * 1024)}})).status, 413);
-assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', backup}, env({DB: undefined}))).status, 503);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', overwrite: true, backup: {...backup, extra: 'x'.repeat(128 * 1024)}})).status, 413);
+assert.equal((await settings({action: 'save', id: 'daryl-markets', owner: 'Daryl', overwrite: true, backup}, env({DB: undefined}))).status, 503);
 
 // Origin and rate limiting
 assert.equal((await worker.fetch(new Request('https://api.test/api/settings', {method: 'POST', headers: {...headers(), Origin: 'https://evil.test'}, body: '{}'}), env())).status, 403);
@@ -204,4 +222,4 @@ assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404)
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
 assert.equal(count(), 0);
 
-console.log('PASS: routing, CORS, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');
+console.log('PASS: routing, CORS, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

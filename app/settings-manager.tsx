@@ -8,21 +8,24 @@ import {normaliseId,normaliseOwner,suggestId,validId,validOwner} from '@/lib/set
 // each: the server, under a shared Settings ID, or a file on this device.
 export default function SettingsManager({fontSize,ready,onApply}:{fontSize:number;ready:boolean;onApply:(backup:SettingsBackup)=>void}){
  const [open,setOpen]=useState(false),[id,setId]=useState(''),[owner,setOwner]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[tone,setTone]=useState<'ok'|'error'|''>('');
+ // Set when a save is refused because the ID already holds someone's settings.
+ const [conflict,setConflict]=useState<{id:string;owner:string;updatedAt:string}|null>(null);
  const fileInput=useRef<HTMLInputElement>(null);
  useEffect(()=>{try{setId(localStorage.getItem('mynews-settings-id')||'');setOwner(localStorage.getItem('mynews-settings-owner')||'');}catch{}},[]);
  function note(text:string,kind:'ok'|'error'){setMessage(text);setTone(kind);}
- function clearNote(){setMessage('');setTone('');}
+ function clearNote(){setMessage('');setTone('');setConflict(null);}
  function remember(token:string,who:string){try{localStorage.setItem('mynews-settings-id',token);if(who)localStorage.setItem('mynews-settings-owner',who);}catch{}}
  function create(){const next=suggestId();setId(next);note('Created the ID '+next+'. Add an owner name, then choose Save online.','ok');}
 
- async function online(action:'save'|'apply'){
+ async function online(action:'save'|'apply',overwrite=false){
   setBusy(true);clearNote();
   try{
    const token=normaliseId(id);
    if(!validId(token))throw Error('Settings IDs are 3 to 40 characters using letters, numbers, hyphens and underscores.');
    if(action==='save'&&!validOwner(owner))throw Error('Add an owner name of 2 to 60 characters so you can tell later who created this ID.');
-   const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:token,...(action==='save'?{owner:normaliseOwner(owner),backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
-   const data=await response.json() as {error?:string;backup?:unknown;owner?:string;saveCount?:number};
+   const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:token,...(action==='save'?{owner:normaliseOwner(owner),overwrite,backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
+   const data=await response.json() as {error?:string;backup?:unknown;owner?:string;saveCount?:number;conflict?:boolean;existing?:{id:string;owner:string;updatedAt:string}};
+   if(response.status===409&&data.conflict&&data.existing){setConflict(data.existing);setBusy(false);return;}
    if(!response.ok)throw Error((data.error||'Could not reach online settings.')+' ('+response.status+' from '+apiOrigin()+')');
    setId(token);remember(token,data.owner||'');
    if(data.owner)setOwner(data.owner);
@@ -82,6 +85,6 @@ export default function SettingsManager({fontSize,ready,onApply}:{fontSize:numbe
    <input ref={fileInput} type="file" accept=".json,application/json" aria-label="Choose a Mynews settings file" hidden onChange={fileChosen}/>
   </div>
 
-  {message&&<p role="status" className={tone==='error'?'settings-error':'settings-ok'}>{message}</p>}
+  {conflict&&<div className="settings-confirm" role="alertdialog" aria-label="Replace saved settings"><p><strong>{conflict.id}</strong> already holds settings saved by <strong>{conflict.owner}</strong> on {new Intl.DateTimeFormat('en-SG',{dateStyle:'medium',timeStyle:'short'}).format(new Date(conflict.updatedAt))}. Replacing them cannot be undone.</p><div className="form-actions"><button className="secondary" disabled={busy} onClick={()=>setConflict(null)}>Cancel</button><button className="primary" disabled={busy} onClick={()=>online('save',true)}>{busy?'Replacing…':'Replace them'}</button></div></div>}{message&&<p role="status" className={tone==='error'?'settings-error':'settings-ok'}>{message}</p>}
  </DialogContent></Dialog></>;
 }

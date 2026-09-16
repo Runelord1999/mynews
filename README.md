@@ -40,7 +40,7 @@ npm run db:apply        # creates the settings table in the mynews-db D1 databas
 npm run deploy:worker   # publishes mynews-api
 ```
 
-Then set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to the deployed Worker origin, for example `https://mynews-api.<your-subdomain>.workers.dev`, and re-run the Pages workflow.
+The published reader points at `https://mynews-api.darylysm.workers.dev` by default, so no further configuration is needed. To send it somewhere else — a custom domain, or a second Worker — set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to that origin and re-run the Pages workflow. The default is built in rather than left to a variable so a deploy that forgets one cannot silently send settings to another server.
 
 Run `npm test` to exercise the Worker's routing, CORS, settings sharing and admin flow without deploying.
 
@@ -61,7 +61,7 @@ One **Save Settings** button in the masthead opens a dialog that both saves and 
 
 Settings are stored on the server under a **Settings ID** — readable words, not a secret. `Create new ID` suggests one like `quiet-harbor-4f2a`, or type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive). **Settings ID Owner Name** records who created the ID; it is required to save online and is fixed at first save, so a later save by someone else does not rewrite it.
 
-**Save online** stores the current settings under that ID. **Restore from online** fetches whatever is stored there and asks before replacing this browser's library. IDs are meant to be shared like a playlist link — anyone holding one can apply the setup, and can also overwrite it. Online settings are capped at 128 KB and rate limited per IP address. Nothing about the visitor is stored: no IP address, no user agent, no device details.
+**Save online** stores the current settings under that ID. If the ID already holds settings, the save is refused and the dialog names who saved them and when, with Replace them and Cancel; nothing is written until Replace is pressed. **Restore from online** fetches whatever is stored there and asks before replacing this browser's library. IDs are meant to be shared like a playlist link — anyone holding one can apply the setup, and can also overwrite it. Online settings are capped at 128 KB and rate limited per IP address. Nothing about the visitor is stored: no IP address, no user agent, no device details.
 
 Online saving needs to reach the API Worker. On a managed corporate machine that request may be blocked by the network, which is why the masthead says so and why the file option exists.
 

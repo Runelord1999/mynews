@@ -64,8 +64,10 @@ declare const __MYNEWS_API_BASE__: string | undefined;
 export function apiBase(){
  const configured = typeof __MYNEWS_API_BASE__ === 'string' ? __MYNEWS_API_BASE__ : '';
  if (configured) return configured.replace(/\/+$/, '');
- // Fallback for a Pages build published without MYNEWS_API_BASE set.
- return location.hostname.endsWith('github.io') ? 'https://mynews-daryl.runelord1999.chatgpt.site' : '';
+ // The published reader talks to the Mynews API Worker. This is the default
+ // rather than a build variable so a deploy that forgets to set one cannot
+ // silently send settings somewhere else.
+ return location.hostname.endsWith('github.io') ? 'https://mynews-api.darylysm.workers.dev' : '';
 }
 export function feedEndpoint(){return apiBase()+'/api/feed';}
 export function settingsEndpoint(){return apiBase()+'/api/settings';}
