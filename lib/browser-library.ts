@@ -70,3 +70,22 @@ export function adminEndpoint(){return apiBase()+'/api/admin';}
 export function articleEndpoint(){return apiBase()+'/api/article';}
 // Shown in error messages so a build pointed at the wrong backend is obvious.
 export function apiOrigin(){return apiBase()||location.origin;}
+
+// Headlines are kept between visits so reopening the tab shows the last
+// edition instead of firing a fresh round of searches. Keyed by the source
+// selection, because that is what changes which stories come back.
+const feedKey='mynews-feed-cache-v1';
+export type FeedCache={articles:Article[];fetchedAt:string};
+export function readFeedCache(key:string):FeedCache|null{
+ try{const all=JSON.parse(localStorage.getItem(feedKey)||'{}') as Record<string,FeedCache>;const hit=all[key];return hit&&Array.isArray(hit.articles)?hit:null;}catch{return null;}
+}
+export function writeFeedCache(key:string,value:FeedCache){
+ const entry={articles:value.articles.slice(0,200),fetchedAt:value.fetchedAt};
+ let all:Record<string,FeedCache>={};
+ try{all=JSON.parse(localStorage.getItem(feedKey)||'{}');}catch{}
+ all[key]=entry;
+ // Keep only the four most recent source selections so storage stays small.
+ const trimmed=Object.fromEntries(Object.entries(all).sort((a,b)=>Date.parse(b[1].fetchedAt||'')-Date.parse(a[1].fetchedAt||'')).slice(0,4));
+ try{localStorage.setItem(feedKey,JSON.stringify(trimmed));}
+ catch{try{localStorage.setItem(feedKey,JSON.stringify({[key]:entry}));}catch{/* storage is full or blocked; the edition is still on screen */}}
+}

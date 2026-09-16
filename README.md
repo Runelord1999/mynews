@@ -46,7 +46,7 @@ Run `npm test` to exercise the Worker's routing, CORS, settings sharing and admi
 
 ## Reading behavior
 
-Comma-separated keywords are combined with OR. Feeds refresh on opening a topic or pressing Refresh news, with a five-minute feed cache. Articles open in a new tab at the original publisher URL. Pasted URLs use a headline and excerpt you enter yourself. Feed coverage and availability depend on Bing News. This reader is intended for personal, non-commercial use; it does not bypass paywalls or send notifications.
+Comma-separated keywords are combined with OR. **Stories are fetched only when you ask for them.** Pressing **Refresh news** searches every topic; reopening the tab restores the last edition from this browser rather than searching again, and the toolbar shows when it was last refreshed. Topic tabs filter the stored edition without hitting the network. A source selection with nothing stored yet fetches once, then waits for you. The stored edition keeps the two hundred newest stories for each of the four most recent source selections. Articles open in a new tab at the original publisher URL. Pasted URLs use a headline and excerpt you enter yourself. Feed coverage and availability depend on Bing News. This reader is intended for personal, non-commercial use; it does not bypass paywalls or send notifications.
 
 ## Reading layout
 

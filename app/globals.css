@@ -87,3 +87,8 @@ footer{margin-top:22px;padding:15px 0}
 
 .read-more{position:absolute;bottom:17px;left:var(--card-space);display:flex;align-items:center;gap:5px;border:1px solid #d6ddd5;background:#fff;border-radius:4px;padding:5px 9px;font-size:11px;color:#42604a}
 .read-more:hover:not(:disabled){background:#eef3ea}
+
+/* Refresh sits ahead of Sources and carries the age of the edition. */
+.refresh-group{display:flex;align-items:center;gap:9px;min-width:0}
+.last-refreshed{font-size:11px;color:#77836f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:600px){.refresh-group{order:1;width:100%}.last-refreshed{white-space:normal}}

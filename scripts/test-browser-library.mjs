@@ -34,6 +34,30 @@ lib.writeLibrary({action:'sites',sites:[{name:'Good feed',url:'https://example.c
 assert.equal(lib.readLibrary().sites[0].feedUrl,'https://example.com/rss');
 const oldBackup=JSON.parse(backup);delete oldBackup.sites;
 assert.deepEqual(lib.parseBackup(JSON.stringify(oldBackup)).sites,[]);
+// The edition is cached per source selection so reopening the tab does not
+// trigger a fresh round of searches.
+const story={id:'https://example.com/n',url:'https://example.com/n',title:'Cached story',excerpt:'Body',source:'example.com',date:new Date().toISOString(),topic:'AI'};
+assert.equal(lib.readFeedCache('all|'),null,'nothing cached to begin with');
+lib.writeFeedCache('all|',{articles:[story],fetchedAt:'2026-09-16T01:00:00.000Z'});
+assert.equal(lib.readFeedCache('all|').articles[0].title,'Cached story');
+assert.equal(lib.readFeedCache('all|').fetchedAt,'2026-09-16T01:00:00.000Z');
+assert.equal(lib.readFeedCache('bing|'),null,'a different source selection is a different cache');
+
+// Only the four most recent selections are kept.
+for(let i=0;i<6;i++)lib.writeFeedCache('key'+i,{articles:[story],fetchedAt:'2026-09-16T02:0'+i+':00.000Z'});
+const stored=Object.keys(JSON.parse(memory.get('mynews-feed-cache-v1')));
+assert.equal(stored.length,4,'cache is bounded');
+assert.ok(stored.includes('key5')&&stored.includes('key2'),'newest selections survive');
+assert.ok(!stored.includes('key0'),'oldest selection is dropped');
+
+// A per-view cache is capped so one huge edition cannot fill storage.
+lib.writeFeedCache('big',{articles:Array.from({length:500},(_,i)=>({...story,url:'https://example.com/'+i})),fetchedAt:new Date().toISOString()});
+assert.equal(lib.readFeedCache('big').articles.length,200);
+
+// Unreadable cache is treated as no cache rather than throwing.
+memory.set('mynews-feed-cache-v1','{broken');
+assert.equal(lib.readFeedCache('all|'),null);
+
 memory.clear();
 const restored=lib.restoreBackup(lib.parseBackup(backup));
 assert.equal(restored.fontSize,14);
@@ -50,4 +74,4 @@ lib.writeLibrary({action:'remove',id:article.id});
 assert.equal(lib.readLibrary().articles.length,0);
 globalThis.localStorage.setItem=()=>{throw Error('Storage full');};
 assert.throws(()=>lib.writeLibrary({action:'save',article}),/Storage full/);
-console.log('PASS: library operations, backup export, restore after cleared storage, invalid-file protection, unsafe URLs, and storage failures.');
+console.log('PASS: library operations, bounded feed cache, backup export, restore after cleared storage, invalid-file protection, unsafe URLs, and storage failures.');
