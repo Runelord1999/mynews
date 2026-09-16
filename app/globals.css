@@ -132,3 +132,12 @@ footer{margin-top:22px;padding:15px 0}
 .settings-confirm{border:1px solid #e3d3b8;background:#fdf6e8;border-radius:5px;padding:11px 13px}
 .settings-confirm p{margin:0 0 9px;font-size:13px;line-height:1.55;color:#6a5526}
 .settings-confirm .form-actions{justify-content:flex-end}
+
+/* Headlines only: drop the excerpt and the space it was reserving, so cards
+   collapse to the headline and its source line. */
+.headlines-only .story p{display:none}
+.headlines-only .story-link{min-height:0;padding-bottom:calc(var(--card-space) + 4px)}
+.headlines-only .story h2{margin:7px 0 10px}
+.headlines-only .story .source{padding-right:34px}
+.headlines-only .save{bottom:calc(var(--card-space) - 6px)}
+.headlines-only .article-grid{align-items:start}

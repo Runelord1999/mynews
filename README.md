@@ -51,7 +51,9 @@ Comma-separated keywords are combined with OR. **Stories are fetched only when y
 
 ## Reading layout
 
-The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. An info icon beside Reset says what it touches: the text size only, back to 16px. Topics, source sites, the reading list, the saved Settings ID and the stored headlines are unaffected. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. On your radar is a compact horizontal topic strip instead of a sidebar.
+The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. **Hide excerpt**, beside Refresh news, drops the body text from every card and leaves the headline and its source line, so the cards collapse to a fraction of their height and far more of them fit on screen. Press it again to bring the text back. The choice is remembered in this browser, alongside the collapsed-section states, rather than travelling in a settings backup. Read more is hidden while excerpts are, since there is nothing on the card for it to expand into.
+
+An info icon beside Reset says what it touches: the text size only, back to 16px. Topics, source sites, the reading list, the saved Settings ID and the stored headlines are unaffected. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. On your radar is a compact horizontal topic strip instead of a sidebar.
 
 
 ## Settings backup
