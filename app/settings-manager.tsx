@@ -1,0 +1,87 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import {exportBackup,parseBackup,settingsEndpoint,apiOrigin,type SettingsBackup} from '@/lib/browser-library';
+import {normaliseId,normaliseOwner,suggestId,validId,validOwner} from '@/lib/settings-id';
+
+// One place to save and restore, with the same two destinations offered for
+// each: the server, under a shared Settings ID, or a file on this device.
+export default function SettingsManager({fontSize,ready,onApply}:{fontSize:number;ready:boolean;onApply:(backup:SettingsBackup)=>void}){
+ const [open,setOpen]=useState(false),[id,setId]=useState(''),[owner,setOwner]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[tone,setTone]=useState<'ok'|'error'|''>('');
+ const fileInput=useRef<HTMLInputElement>(null);
+ useEffect(()=>{try{setId(localStorage.getItem('mynews-settings-id')||'');setOwner(localStorage.getItem('mynews-settings-owner')||'');}catch{}},[]);
+ function note(text:string,kind:'ok'|'error'){setMessage(text);setTone(kind);}
+ function clearNote(){setMessage('');setTone('');}
+ function remember(token:string,who:string){try{localStorage.setItem('mynews-settings-id',token);if(who)localStorage.setItem('mynews-settings-owner',who);}catch{}}
+ function create(){const next=suggestId();setId(next);note('Created the ID '+next+'. Add an owner name, then choose Save online.','ok');}
+
+ async function online(action:'save'|'apply'){
+  setBusy(true);clearNote();
+  try{
+   const token=normaliseId(id);
+   if(!validId(token))throw Error('Settings IDs are 3 to 40 characters using letters, numbers, hyphens and underscores.');
+   if(action==='save'&&!validOwner(owner))throw Error('Add an owner name of 2 to 60 characters so you can tell later who created this ID.');
+   const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:token,...(action==='save'?{owner:normaliseOwner(owner),backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
+   const data=await response.json() as {error?:string;backup?:unknown;owner?:string;saveCount?:number};
+   if(!response.ok)throw Error((data.error||'Could not reach online settings.')+' ('+response.status+' from '+apiOrigin()+')');
+   setId(token);remember(token,data.owner||'');
+   if(data.owner)setOwner(data.owner);
+   if(action==='apply'){const backup=parseBackup(JSON.stringify(data.backup));setOpen(false);onApply(backup);}
+   else note('Saved online under '+token+(data.saveCount&&data.saveCount>1?' (version '+data.saveCount+')':'')+', owned by '+(data.owner||normaliseOwner(owner))+'. Share this ID with anyone you want to give these settings to.','ok');
+  }catch(error){note((error instanceof Error?error.message:'Could not reach online settings.')+(error instanceof Error&&!error.message.includes(apiOrigin())?' (no reply from '+apiOrigin()+')':''),'error');}finally{setBusy(false);}
+ }
+
+ function downloadFile(){
+  try{
+   const blob=new Blob([exportBackup(fontSize)],{type:'application/json'});
+   const url=URL.createObjectURL(blob);const link=document.createElement('a');
+   link.href=url;link.download='mynews-settings-'+new Date().toISOString().slice(0,10)+'.json';
+   document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+   note('Settings file downloaded. Keep it somewhere safe — this works without any network.','ok');
+  }catch{note('Could not build a settings file. Check browser storage and try again.','error');}
+ }
+
+ async function fileChosen(event:React.ChangeEvent<HTMLInputElement>){
+  const file=event.target.files?.[0];event.target.value='';if(!file)return;
+  try{
+   if(file.size>5*1024*1024)throw Error('too large');
+   const backup=parseBackup(await file.text());
+   setOpen(false);onApply(backup);
+  }catch{note('Choose a valid Mynews settings file (up to 5 MB). Your current settings have not changed.','error');}
+ }
+
+ return <><button className="backup-button" onClick={()=>setOpen(true)}>Save Settings</button>
+ <Dialog open={open} onOpenChange={value=>{if(!busy)setOpen(value);}}><DialogContent className="editor">
+  <DialogTitle>Save and restore settings</DialogTitle>
+  <DialogDescription>Keep your topics, source sites, reading list and text size. Save online to reach them from another browser, or to a file on this device.</DialogDescription>
+
+  <div className="settings-id-row">
+   <label>Settings ID<input value={id} onChange={e=>{setId(e.target.value);clearNote();}} autoComplete="off" spellCheck={false} maxLength={40} placeholder="Create an ID or type one to apply" disabled={busy}/></label>
+   <label>Settings ID Owner Name<input value={owner} onChange={e=>{setOwner(e.target.value);clearNote();}} autoComplete="off" maxLength={60} placeholder="Who is creating this ID" disabled={busy}/></label>
+  </div>
+  <div className="form-actions">
+   <button className="secondary" disabled={busy} onClick={create}>Create new ID</button>
+   <button className="secondary" disabled={busy||!id} onClick={async()=>{try{await navigator.clipboard.writeText(normaliseId(id));note('ID copied to the clipboard.','ok');}catch{note('Select and copy the ID from the field above.','error');}}}>Copy ID</button>
+  </div>
+  <p className="sites-help">The ID and owner name are only needed for online saving. IDs are not secret and are meant to be shared; anyone with one can also overwrite what is stored under it.</p>
+
+  <div className="settings-choice">
+   <h3 className="site-form-title">Save your settings</h3>
+   <div className="form-actions">
+    <button className="primary" disabled={busy||!ready||!id||!owner} onClick={()=>online('save')}>Save online</button>
+    <button className="secondary" disabled={busy||!ready} onClick={downloadFile}>Save to a file</button>
+   </div>
+  </div>
+
+  <div className="settings-choice">
+   <h3 className="site-form-title">Restore settings</h3>
+   <div className="form-actions">
+    <button className="secondary" disabled={busy||!id} onClick={()=>online('apply')}>Restore from online</button>
+    <button className="secondary" disabled={busy} onClick={()=>fileInput.current?.click()}>Restore from a file</button>
+   </div>
+   <input ref={fileInput} type="file" accept=".json,application/json" aria-label="Choose a Mynews settings file" hidden onChange={fileChosen}/>
+  </div>
+
+  {message&&<p role="status" className={tone==='error'?'settings-error':'settings-ok'}>{message}</p>}
+ </DialogContent></Dialog></>;
+}

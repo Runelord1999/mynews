@@ -55,18 +55,19 @@ The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both
 
 ## Settings backup
 
-### Save Settings Online
+One **Save Settings** button in the masthead opens a dialog that both saves and restores, offering the same two destinations for each.
 
-**Save Settings Online** stores your topics, source sites, reading list and text size on the server under a **Settings ID**. IDs are readable words, not secrets: `Create new ID` suggests one like `quiet-harbor-4f2a`, and you can type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive).
+### Online
 
-**Settings ID Owner Name** records who created the ID. It is required to save and is set once, when the ID is first stored, so a later save by someone else does not rewrite it. Master Admin can correct it.
+Settings are stored on the server under a **Settings ID** — readable words, not a secret. `Create new ID` suggests one like `quiet-harbor-4f2a`, or type your own (3–40 characters, letters, numbers, hyphens and underscores, case-insensitive). **Settings ID Owner Name** records who created the ID; it is required to save online and is fixed at first save, so a later save by someone else does not rewrite it.
 
-- **Save online** writes the current settings under that ID and confirms what was saved.
-- **Apply settings** fetches whatever is stored under the ID you typed and asks before replacing this browser's library.
+**Save online** stores the current settings under that ID. **Restore from online** fetches whatever is stored there and asks before replacing this browser's library. IDs are meant to be shared like a playlist link — anyone holding one can apply the setup, and can also overwrite it. Online settings are capped at 128 KB and rate limited per IP address. Nothing about the visitor is stored: no IP address, no user agent, no device details.
 
-IDs are meant to be shared, like a playlist link — anyone with the ID can apply the same setup, and anyone holding it can overwrite what is stored there. Online settings are capped at 128 KB and rate limited per IP address.
+Online saving needs to reach the API Worker. On a managed corporate machine that request may be blocked by the network, which is why the masthead says so and why the file option exists.
 
-Nothing about the visitor is stored: no IP address, no user agent, no device details. Each entry holds only the ID, the owner name, the settings themselves, when it was created, when it was last saved, and how many times.
+### To a file
+
+**Save to a file** downloads a dated JSON file containing topics, keyword lists, saved article URLs, titles and excerpts, source sites and font size. **Restore from a file** reads one back. Both run entirely in the browser with no network at all, so they work anywhere. A preview shows the counts and asks before replacing this browser's library, and invalid files are rejected without changing anything.
 
 ### Master Admin
 
@@ -84,10 +85,6 @@ npm run deploy:worker
 ```
 
 The Worker then refuses admin requests without the key, and the panel shows a key field on its own. Remove it again with `npx wrangler secret delete ADMIN_KEY --config worker/wrangler.toml`. No page change is needed either way.
-
-### Local file backup
-
-Use **Save Settings Locally** in the header to download a dated JSON file containing your topics, keyword lists, saved article URLs/titles/excerpts, and font size. Keep it in a folder on your local drive. Use **Restore Settings Locally** to choose that file after clearing browser data or on another device. A preview shows the counts and asks before replacing this browser's library. Invalid files are rejected without changing settings. Backups are handled locally in the browser, not uploaded. The browser controls the download destination.
 
 
 ## Website searches and news sources
