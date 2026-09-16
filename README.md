@@ -12,18 +12,19 @@ Requires Node 22.13+ and npm.
 
 ```sh
 npm ci
-npm run dev
+npm run dev          # the reader on Vite
+npm run dev:worker   # the API on Wrangler
 npm run build:pages
-npm run build
 npx tsc --noEmit
+npm run lint
 npm test
 ```
 
-GitHub Actions builds `web/` with `vite.pages.config.ts` and publishes `pages-dist/` to GitHub Pages on pushes to main. The shared React interface lives in `app/newsroom.tsx`.
+GitHub Actions builds `web/` with `vite.pages.config.ts` and publishes `pages-dist/` to GitHub Pages on pushes to main. The React interface lives in `app/newsroom.tsx`; the API lives in `worker/`.
 
 ## Architecture
 
-GitHub Pages serves static files only, so the reader cannot host an API itself. Two pieces make up the public website:
+GitHub Pages serves static files only, so the reader cannot host an API itself. Two pieces make up the website, and nothing else:
 
 - **The reader** — `web/` bundled by `vite.pages.config.ts` into `pages-dist/`, published to GitHub Pages. Topics, saved articles, sites and text size live in this browser's local storage.
 - **The API** — `worker/index.ts`, a standalone Cloudflare Worker serving `/api/feed` (live headlines) and `/api/settings` (online backups, backed by D1). Browsers cannot fetch the Bing, Google News or Hacker News endpoints directly because those responses carry no CORS headers, so this Worker is required even for reading news.
