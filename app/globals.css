@@ -102,3 +102,11 @@ footer{margin-top:22px;padding:15px 0}
 @media(max-width:1180px){.masthead>p.masthead-note{flex-basis:200px;font-size:11px;padding-left:16px}}
 /* The tagline goes away on narrow screens; the guidance drops to its own row. */
 @media(max-width:1000px){.masthead>p.masthead-note{display:block;flex-basis:100%;max-width:none;order:3;border-left:0;padding-left:0;font-size:11px}}
+
+/* Info icon beside Reset. A popover, not a tooltip, so it opens on a tap. */
+.info-button{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:3px;color:#7b8878;border-radius:4px}
+.info-button:hover{color:#3d5a45;background:#eaf0e7}
+.info-pop{background:#fff!important;color:#25412f;border:1px solid #cbd5c7;border-radius:6px;box-shadow:0 14px 40px #172d2726;padding:13px 15px!important;max-width:min(320px,calc(100vw - 32px));z-index:80}
+.info-pop strong{display:block;font-size:13px;margin-bottom:6px}
+.info-pop p{margin:0 0 7px;font-size:12px;line-height:1.55;color:#5e6d5e}
+.info-pop p:last-child{margin-bottom:0}

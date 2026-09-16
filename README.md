@@ -50,7 +50,7 @@ Comma-separated keywords are combined with OR. **Stories are fetched only when y
 
 ## Reading layout
 
-The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. On your radar is a compact horizontal topic strip instead of a sidebar.
+The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. An info icon beside Reset says what it touches: the text size only, back to 16px. Topics, source sites, the reading list, the saved Settings ID and the stored headlines are unaffected. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. On your radar is a compact horizontal topic strip instead of a sidebar.
 
 
 ## Settings backup
