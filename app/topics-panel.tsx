@@ -20,6 +20,11 @@ export default function TopicsPanel({topics,onSave,onDone}:{topics:Topic[];onSav
  return <div className="settings-panel">
   <DialogDescription>Name a topic and give it comma-separated keywords. A story matches a topic when it mentions any of them, and anything matching none still appears under All stories.</DialogDescription>
   <form onSubmit={submit}>
+   <div className="panel-actions">
+    <button type="button" className="secondary" disabled={draft.length>=20} onClick={()=>setDraft(old=>[...old,{name:'',keywords:''}])}><Plus size={16}/>New topic</button>
+    <button className="primary" disabled={busy||!changed}>{busy?'Saving…':changed?'Save topics':'Saved'}</button>
+    <span className="count">{draft.length} of 20 topics</span>
+   </div>
    <div className="topic-editor">{draft.map((topic,index)=><div className="topic-edit" key={index}>
     <div>
      <label>Topic name<input required maxLength={40} value={topic.name} onChange={e=>setDraft(old=>old.map((x,i)=>i===index?{...x,name:e.target.value}:x))}/></label>
@@ -27,11 +32,7 @@ export default function TopicsPanel({topics,onSave,onDone}:{topics:Topic[];onSav
     </div>
     <button type="button" aria-label={'Remove topic '+(topic.name||'without a name')} disabled={draft.length===1} onClick={()=>setDraft(old=>old.filter((_,i)=>i!==index))}><Trash2 size={17}/></button>
    </div>)}</div>
-   <p className="sites-help">{draft.length} of 20 topics. Removing one does not remove anything already saved to your reading list.</p>
-   <div className="form-actions">
-    <button type="button" className="secondary" disabled={draft.length>=20} onClick={()=>setDraft(old=>[...old,{name:'',keywords:''}])}><Plus size={16}/>New topic</button>
-    <button className="primary" disabled={busy||!changed}>{busy?'Saving…':changed?'Save topics':'Saved'}</button>
-   </div>
+   <p className="sites-help">Removing a topic does not remove anything already saved to your reading list.</p>
   </form>
  </div>;
 }

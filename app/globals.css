@@ -215,3 +215,11 @@ main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opa
 .saved-site-row>.site-link{display:flex;align-items:center;justify-content:center;padding:6px;color:#526b51;border:1px solid #dde4d9;border-radius:4px}
 .saved-site-row>.site-link:hover{background:#eef3ea;color:#24402f}
 .suggestion-list{display:grid;gap:2px;max-height:48vh;overflow:auto;border-top:1px solid #eef2ec;padding-top:6px}
+
+/* The dialog scrolls; its pages do not scroll inside it. One scrollbar. */
+.settings-panel{max-height:none;overflow:visible}
+.editor .topic-editor{max-height:none;overflow:visible}
+/* Each page leads with what it is for: the actions come before the list. */
+.panel-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:10px;border-bottom:1px solid #dce4d7}
+.panel-actions .primary,.panel-actions .secondary{padding:9px 14px;font-size:13px}
+.panel-actions>.count{margin-left:auto;font-size:11px;color:#77866f}

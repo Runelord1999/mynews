@@ -10,7 +10,7 @@ import type {Topic,NewsSite} from '@/lib/news';
 
 export type SettingsTab='topics'|'sites'|'backup';
 const tabs:{id:SettingsTab;label:string;icon:typeof Save}[]=[
- {id:'topics',label:'On your radar',icon:ListFilter},
+ {id:'topics',label:'Keyword Topics',icon:ListFilter},
  {id:'sites',label:'Source sites',icon:Globe},
  {id:'backup',label:'Save settings',icon:Save},
 ];

@@ -25,23 +25,37 @@ try{
  const page=await context.newPage();await page.goto(process.env.MYNEWS_TEST_URL||'http://127.0.0.1:5180/mynews/');
  await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
  // The page itself carries no settings strips any more.
- assert.equal(await page.locator('.radar-strip').count(),0,'On your radar moved into settings');
+ assert.equal(await page.locator('.radar-strip').count(),0,'the topic strip moved into settings');
  assert.equal(await page.locator('.sites-strip').count(),0,'Your search source sites moved into settings');
  assert.equal(await page.getByRole('button',{name:'Open settings',exact:true}).count(),1);
 
  // The three sections are pages of one dialog.
  await page.getByRole('button',{name:'Open settings',exact:true}).click();
- for(const name of ['On your radar','Source sites','Save settings']){
+ for(const name of ['Keyword Topics','Source sites','Save settings']){
   await page.getByRole('tab',{name,exact:true}).click();
   assert.equal(await page.getByRole('tab',{name,exact:true}).getAttribute('aria-selected'),'true',name+' is a page of the settings dialog');
  }
- await page.getByRole('tab',{name:'On your radar',exact:true}).click();
+ await page.getByRole('tab',{name:'Keyword Topics',exact:true}).click();
  await page.getByLabel('Topic name',{exact:true}).first().waitFor();
+ // Each page leads with its actions, and neither scrolls inside the dialog.
+ const topicsBox=await page.locator('.settings-panel').evaluate(el=>{const c=getComputedStyle(el);return {maxHeight:c.maxHeight,overflowY:c.overflowY,scrolls:el.scrollHeight>el.clientHeight+1};});
+ assert.equal(topicsBox.maxHeight,'none','a settings page is not capped in height');
+ assert.ok(!['auto','scroll'].includes(topicsBox.overflowY),'a settings page has no scrollbar of its own');
+ assert.equal(topicsBox.scrolls,false);
+ const topicActions=await page.locator('.settings-panel .panel-actions').boundingBox();
+ const topicList=await page.locator('.topic-editor').boundingBox();
+ assert.ok(topicActions.y<topicList.y,'New topic and Save sit above the list');
+ const editorBox=await page.locator('.topic-editor').evaluate(el=>getComputedStyle(el).maxHeight);
+ assert.equal(editorBox,'none','the topic list is not a scrolling box');
  await page.getByRole('tab',{name:'Save settings',exact:true}).click();
  await page.getByLabel('Settings ID',{exact:true}).waitFor();
 
  // Back to the sources page for the rest.
  await page.getByRole('tab',{name:'Source sites',exact:true}).click();
+ const siteActions=await page.locator('.settings-panel .panel-actions').boundingBox();
+ const services=await page.locator('.all-source-services').boundingBox();
+ assert.ok(siteActions.y<services.y,'Add Website and Add suggested sources sit above the lists');
+ await page.getByRole('button',{name:'Add Website',exact:true}).waitFor();
  assert.equal(await page.locator('.service-row:visible').count(),12,'services are listed when the section is open');
  await page.getByRole('button',{name:/Minimize news services/}).click();
  assert.equal(await page.locator('.service-row:visible').count(),0,'minimizing hides the service rows');
