@@ -70,7 +70,7 @@ Online saving needs to reach the API Worker. On a managed corporate machine that
 
 ### To a file
 
-**Save to a file** downloads a dated JSON file containing topics, keyword lists, saved article URLs, titles and excerpts, source sites and font size. **Restore from a file** reads one back. Both run entirely in the browser with no network at all, so they work anywhere. A preview shows the counts and asks before replacing this browser's library, and invalid files are rejected without changing anything.
+**Save to a file** writes a dated JSON file containing topics, keyword lists, saved article URLs, titles and excerpts, source sites and font size. Where the browser supports it — Chrome and Edge — it opens the operating system's Save As dialog so the name and folder are the reader's choice; elsewhere it downloads to the browser's downloads folder. Closing the dialog cancels without reporting anything. **Restore from a file** reads one back. Both run entirely in the browser with no network at all, so they work anywhere. A preview shows the counts and asks before replacing this browser's library, and invalid files are rejected without changing anything.
 
 ### Master Admin
 

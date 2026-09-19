@@ -51,6 +51,23 @@ try{
  assert.equal(editorBox,'none','the topic list is not a scrolling box');
  await page.getByRole('tab',{name:'Save settings',exact:true}).click();
  await page.getByLabel('Settings ID',{exact:true}).waitFor();
+ // Save to a file asks the browser for a location when it can, and falls back
+ // to a download when it cannot.
+ await page.evaluate(()=>{window.__picked=null;window.showSaveFilePicker=async o=>{window.__picked=o;return {name:o.suggestedName,createWritable:async()=>({written:'',write(d){this.written=d;window.__wrote=d;},close:async()=>{}})};};});
+ await page.getByLabel('Settings ID',{exact:true}).fill('teen-reader');
+ await page.getByRole('button',{name:'Save to a file',exact:true}).click();
+ const picked=await page.evaluate(()=>window.__picked);
+ assert.ok(picked,'the browser is asked where to put the file');
+ assert.match(picked.suggestedName,/^mynews-settings-teen-reader-\d{4}-\d{2}-\d{2}\.json$/,'the suggested name carries the settings id and the date');
+ assert.deepEqual(picked.types[0].accept,{'application/json':['.json']});
+ const wrote=await page.evaluate(()=>window.__wrote);
+ assert.equal(JSON.parse(wrote).format,'mynews-settings','the settings themselves are written');
+
+ // Closing the dialog is a decision, not an error.
+ await page.evaluate(()=>{window.showSaveFilePicker=async()=>{const e=new DOMException('cancelled','AbortError');throw e;};});
+ await page.getByRole('button',{name:'Save to a file',exact:true}).click();
+ await page.waitForTimeout(300);
+ assert.equal(await page.locator('.settings-error').count(),0,'cancelling reports nothing');
 
  // Back to the sources page for the rest.
  await page.getByRole('tab',{name:'Source sites',exact:true}).click();

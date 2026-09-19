@@ -21,7 +21,7 @@ export default defineConfig([
         Headers: "readonly", Blob: "readonly", URL: "readonly", URLSearchParams: "readonly",
         AbortController: "readonly", AbortSignal: "readonly", TextDecoder: "readonly",
         TextEncoder: "readonly", Intl: "readonly", Buffer: "readonly", globalThis: "readonly",
-        getComputedStyle: "readonly",
+        getComputedStyle: "readonly", DOMException: "readonly",
       },
     },
     rules: {

@@ -34,15 +34,38 @@ export default function SettingsManager({fontSize,ready,onApply,onDone}:{fontSiz
   }catch(error){note((error instanceof Error?error.message:'Could not reach online settings.')+(error instanceof Error&&!error.message.includes(apiOrigin())?' (no reply from '+apiOrigin()+')':''),'error');}finally{setBusy(false);}
  }
 
- function downloadFile(){
+ // Chrome and Edge can offer a real Save As dialog, so the reader picks the
+ // name and the folder. Everywhere else the browser takes the file into its
+ // downloads folder, which is the only thing the web offered before.
+ async function saveToFile(){
+  let text,suggested;
   try{
-   const blob=new Blob([exportBackup(fontSize)],{type:'application/json'});
-   const url=URL.createObjectURL(blob);const link=document.createElement('a');
+   text=exportBackup(fontSize);
    const fileId=normaliseId(id).replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
-   link.href=url;link.download='mynews-settings-'+(fileId?fileId+'-':'')+new Date().toISOString().slice(0,10)+'.json';
+   suggested='mynews-settings-'+(fileId?fileId+'-':'')+new Date().toISOString().slice(0,10)+'.json';
+  }catch{note('Could not build a settings file. Check browser storage and try again.','error');return;}
+
+  const picker=(window as Window&{showSaveFilePicker?:(options:{suggestedName?:string;types?:{description?:string;accept:Record<string,string[]>}[]})=>Promise<{createWritable:()=>Promise<{write:(data:string)=>Promise<void>;close:()=>Promise<void>}>;name?:string}>}).showSaveFilePicker;
+  if(picker){
+   try{
+    const handle=await picker({suggestedName:suggested,types:[{description:'Mynews settings',accept:{'application/json':['.json']}}]});
+    const writable=await handle.createWritable();
+    await writable.write(text);await writable.close();
+    note('Saved '+(handle.name||suggested)+' where you chose. This works without any network.','ok');
+   }catch(error){
+    // Closing the dialog is a decision, not a failure.
+    if(error instanceof DOMException&&error.name==='AbortError')return;
+    note('That file could not be written. Try a different folder, or a different name.','error');
+   }
+   return;
+  }
+
+  try{
+   const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+   const link=document.createElement('a');link.href=url;link.download=suggested;
    document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-   note('Downloaded '+link.download+'. Keep it somewhere safe — this works without any network.','ok');
-  }catch{note('Could not build a settings file. Check browser storage and try again.','error');}
+   note('Downloaded '+suggested+' to this browser\u2019s downloads folder. Keep it somewhere safe — this works without any network.','ok');
+  }catch{note('Could not save that file. Check browser storage and try again.','error');}
  }
 
  async function fileChosen(event:React.ChangeEvent<HTMLInputElement>){
@@ -71,7 +94,7 @@ export default function SettingsManager({fontSize,ready,onApply,onDone}:{fontSiz
    <h3 className="site-form-title">Save your settings</h3>
    <div className="form-actions">
     <button className="primary" disabled={busy||!ready||!id||!owner} onClick={()=>online('save')}>Save online</button>
-    <button className="secondary" disabled={busy||!ready} onClick={downloadFile}>Save to a file</button>
+    <button className="secondary" disabled={busy||!ready} onClick={saveToFile}>Save to a file</button>
    </div>
   </div>
 
