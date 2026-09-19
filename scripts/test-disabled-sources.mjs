@@ -24,6 +24,11 @@ try{
  await context.route('**/api/feed?**',async route=>{const url=new URL(route.request().url());const provider=url.searchParams.get('provider');requests.push(provider);const article={...stale,id:'https://test.example/'+provider,url:'https://test.example/'+provider,title:provider+' result',provider:({bing:'Bing News',google:'Google News',hackernews:'Hacker News',sitefeed:'arstechnica.com'})[provider]};await route.fulfill({json:{articles:[article]}});});
  const page=await context.newPage();await page.goto(process.env.MYNEWS_TEST_URL||'http://127.0.0.1:5180/mynews/');
  await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
+ // On your radar wraps like the sites strip; it must not scroll sideways.
+ const radar=await page.locator('.radar-topics').evaluate(el=>{const s=getComputedStyle(el);return {wrap:s.flexWrap,overflowX:s.overflowX,scrolls:el.scrollWidth>el.clientWidth+1};});
+ assert.equal(radar.wrap,'wrap','radar topics wrap onto the next line');
+ assert.ok(!['auto','scroll'].includes(radar.overflowX),'radar topics have no sideways scrollbar');
+ assert.equal(radar.scrolls,false);
  await page.getByRole('button',{name:'All sites (12)',exact:true}).click();
  assert.equal(await page.locator('.service-row:visible').count(),12,'services are listed when the section is open');
  await page.getByRole('button',{name:/Minimize news services/}).click();
@@ -83,5 +88,5 @@ try{
  await page.getByRole('button',{name:'Reset to Default',exact:true}).click();
  assert.equal(await page.locator('.service-row').count(),12);
  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources')))).length,12);
- console.log('PASS: services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
+ console.log('PASS: radar wraps, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

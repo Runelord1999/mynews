@@ -180,3 +180,8 @@ main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opa
    their own: one scrollbar for the whole panel, and a long list can be read
    all the way down. Overrides the earlier .editor .saved-sites cap. */
 .editor .saved-sites{max-height:none;overflow:visible;margin-bottom:8px}
+
+/* On your radar wraps like Your Search Source Sites rather than scrolling
+   sideways, so every topic is reachable without dragging a strip. */
+.radar-strip{flex-wrap:wrap}
+.radar-topics{flex-wrap:wrap;overflow:visible}
