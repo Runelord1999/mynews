@@ -57,6 +57,12 @@ try{
  await page.getByLabel('Website URL',{exact:true}).fill('https://personal.example/');
  await page.getByRole('button',{name:'Add site',exact:true}).click();
  assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Successful add hides form');
+ // Saved websites must not scroll inside a box of their own, so a long list
+ // can be reached by scrolling the dialog.
+ const savedBox=await page.locator('.saved-sites').evaluate(el=>{const s=getComputedStyle(el);return {maxHeight:s.maxHeight,overflowY:s.overflowY,scrolls:el.scrollHeight>el.clientHeight+1};});
+ assert.equal(savedBox.maxHeight,'none','saved websites are not capped in height');
+ assert.ok(!['auto','scroll'].includes(savedBox.overflowY),'saved websites have no scrollbar of their own');
+ assert.equal(savedBox.scrolls,false);
  await page.getByRole('button',{name:'Edit Personal feed',exact:true}).click();
  await page.getByLabel('Website name',{exact:true}).fill('Renamed feed');
  await page.getByRole('button',{name:'Save changes',exact:true}).click();
@@ -77,5 +83,5 @@ try{
  await page.getByRole('button',{name:'Reset to Default',exact:true}).click();
  assert.equal(await page.locator('.service-row').count(),12);
  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources')))).length,12);
- console.log('PASS: services section folds and is remembered, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
+ console.log('PASS: services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

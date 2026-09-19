@@ -175,3 +175,8 @@ main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opa
 
 .source-group>.section-toggle{width:100%;margin-bottom:5px}
 .source-group>.section-toggle small{margin-left:auto;letter-spacing:0}
+
+/* Saved websites flow into the dialog rather than scrolling inside a box of
+   their own: one scrollbar for the whole panel, and a long list can be read
+   all the way down. Overrides the earlier .editor .saved-sites cap. */
+.editor .saved-sites{max-height:none;overflow:visible;margin-bottom:8px}
