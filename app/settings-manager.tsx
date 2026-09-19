@@ -38,9 +38,10 @@ export default function SettingsManager({fontSize,ready,onApply}:{fontSize:numbe
   try{
    const blob=new Blob([exportBackup(fontSize)],{type:'application/json'});
    const url=URL.createObjectURL(blob);const link=document.createElement('a');
-   link.href=url;link.download='mynews-settings-'+new Date().toISOString().slice(0,10)+'.json';
+   const fileId=normaliseId(id).replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
+   link.href=url;link.download='mynews-settings-'+(fileId?fileId+'-':'')+new Date().toISOString().slice(0,10)+'.json';
    document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-   note('Settings file downloaded. Keep it somewhere safe — this works without any network.','ok');
+   note('Downloaded '+link.download+'. Keep it somewhere safe — this works without any network.','ok');
   }catch{note('Could not build a settings file. Check browser storage and try again.','error');}
  }
 
