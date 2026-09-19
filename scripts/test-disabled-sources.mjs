@@ -25,6 +25,11 @@ try{
  const page=await context.newPage();await page.goto(process.env.MYNEWS_TEST_URL||'http://127.0.0.1:5180/mynews/');
  await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
  await page.getByRole('button',{name:'All sites (12)',exact:true}).click();
+ assert.equal(await page.locator('.service-row:visible').count(),12,'services are listed when the section is open');
+ await page.getByRole('button',{name:/Minimize news services/}).click();
+ assert.equal(await page.locator('.service-row:visible').count(),0,'minimizing hides the service rows');
+ await page.getByRole('button',{name:/Expand news services/}).click();
+ assert.equal(await page.locator('.service-row:visible').count(),12,'expanding brings them back');
  for(const [id,name] of [['bing','Bing News'],['google','Google News'],['hackernews','Hacker News']]){
   requests.length=0;
   await page.locator('.service-row').filter({has:page.getByText(name,{exact:true})}).getByRole('button',{name:'Stop using',exact:true}).click();
@@ -62,12 +67,15 @@ try{
  assert.equal(await page.locator('.service-row').count(),0);
  await page.getByRole('button',{name:'Use all services and websites',exact:true}).click();
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources'))),[]);
+ await page.getByRole('button',{name:/Minimize news services/}).click();
  await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.reload();
  await page.getByRole('button',{name:'All sites (0)',exact:true}).click();
+ assert.ok(await page.getByRole('button',{name:/Expand news services/}).count(),'the section stays minimized across a reload');
+ await page.getByRole('button',{name:/Expand news services/}).click();
  assert.equal(await page.locator('.service-row').count(),0,'Removed defaults stay gone after reload');
  await page.getByRole('button',{name:'Reset to Default',exact:true}).click();
  assert.equal(await page.locator('.service-row').count(),12);
  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources')))).length,12);
- console.log('PASS: Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
+ console.log('PASS: services section folds and is remembered, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

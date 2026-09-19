@@ -167,3 +167,11 @@ footer{margin-top:22px;padding:15px 0}
 .refresh-group{gap:12px}
 /* While fetching, the whole edition dims so the click is visibly doing work. */
 main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opacity:.45;transition:opacity .15s}
+
+/* A section heading that folds its own contents away. */
+.section-toggle{display:flex;align-items:center;gap:7px;background:none;border:0;padding:0;color:inherit;text-align:left}
+.section-toggle:hover{color:#2f5d43}
+.section-toggle small{color:#77866f;font-size:11px;font-weight:400}
+
+.source-group>.section-toggle{width:100%;margin-bottom:5px}
+.source-group>.section-toggle small{margin-left:auto;letter-spacing:0}
