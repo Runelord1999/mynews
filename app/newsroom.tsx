@@ -12,7 +12,7 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/u
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {Toaster,toast} from 'sonner';
-import {defaults,safeUrl,allSources,defaultSources,engineIds,type Topic,type Article,type NewsSite} from '@/lib/news';
+import {defaults,safeUrl,allSources,defaultSources,type Topic,type Article,type NewsSite} from '@/lib/news';
 import {readLibrary,writeLibrary,feedEndpoint,articleEndpoint,readFeedCache,writeFeedCache,restoreBackup,type SettingsBackup} from '@/lib/browser-library';
 export default function Newsroom(){
  const [sites,setSites]=useState<NewsSite[]>([]),[sitesOpen,setSitesOpen]=useState(false),[sources,setSources]=useState<string[]>([]);
@@ -50,7 +50,7 @@ export default function Newsroom(){
  // Stories are fetched only when asked for: pressing Refresh news, or opening
  // a source selection that has nothing cached. Reopening the tab restores the
  // last edition rather than searching again.
- const feedKey=[...sources].sort().join(',');
+ const feedKey=JSON.stringify({version:2,sources:[...sources].sort(),topics:topics.map(t=>[t.name,t.keywords]),sites:sites.map(s=>[s.url,s.feedUrl])});
  const forced=useRef(false);
  function refreshNews(){forced.current=true;setRefresh(x=>x+1);}
  useEffect(()=>{
@@ -61,7 +61,7 @@ export default function Newsroom(){
   if(cached){setFeed(cached.articles);setFetchedAt(cached.fetchedAt);setLoading(false);setError('');return;}
  }
  const controller=new AbortController();
- setLoading(true);setError('');
+ setFeed([]);setFetchedAt('');setLoading(true);setError('');
  // Each chosen source becomes its own set of requests: an engine searches
  // every topic, a source with a feed is read from that feed, and the ones
  // that have to be searched are combined into a single site-restricted query
@@ -71,13 +71,14 @@ export default function Newsroom(){
  const chosenEngines=picked.filter(x=>x.kind==='engine').map(x=>x.id);
  const feedSources=picked.filter(x=>x.kind==='feed'&&x.feedUrl&&x.url);
  const searchHosts=picked.filter(x=>x.kind==='search'&&x.url).map(x=>new URL(x.url!).hostname).slice(0,15);
- const searchEngines=chosenEngines.length?chosenEngines:engineIds;
+ // Disabled engines must never be re-enabled to search publisher websites.
+ const searchEngines=chosenEngines;
  const jobs=[
   ...topics.flatMap(t=>chosenEngines.map(p=>({topic:t,provider:p,feed:'',site:''}))),
   ...topics.flatMap(t=>feedSources.map(x=>({topic:t,provider:'sitefeed',feed:x.feedUrl!,site:new URL(x.url!).hostname}))),
   ...(searchHosts.length?topics.flatMap(t=>searchEngines.map(p=>({topic:t,provider:p,feed:'',site:searchHosts.join(',')}))):[]),
  ];
- if(!jobs.length){setFeed([]);setLoading(false);setError('No sources are selected. Choose at least one under Sources.');return;}
+ if(!jobs.length){setFeed([]);setLoading(false);setError(searchHosts.length?'The selected websites need a news service to search them. Enable a service under Sources, or choose a website with an RSS feed.':'No sources are selected. Choose at least one under Sources.');return;}
  Promise.allSettled(jobs.map(async job=>{const q=job.topic.keywords.split(',').map(k=>k.trim()).filter(Boolean).join(' OR ');const params=new URLSearchParams({q,provider:job.provider,...(job.feed?{feed:job.feed}:{}),...(job.site?{site:job.site}:{})});const r=await fetch(feedEndpoint()+'?'+params,{signal:controller.signal});const data=await r.json() as {error:string;articles:Article[]};if(!r.ok)throw Error(data.error);return data.articles.map(a=>({...a,topic:job.topic.name}));})).then(results=>{
  if(controller.signal.aborted)return;
  const all=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
