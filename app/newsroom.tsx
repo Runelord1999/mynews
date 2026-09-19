@@ -89,13 +89,16 @@ export default function Newsroom(){
   ...(searchHosts.length?topics.flatMap(t=>searchEngines.map(p=>({topic:t,provider:p,feed:'',site:searchHosts.join(',')}))):[]),
  ];
  if(!jobs.length){setFeed([]);setLoading(false);setNeedsService(searchHosts.length>0);setError(searchHosts.length?'These websites have no full-text feed, so they can only be reached by searching. Turn on a search service and results still come only from the websites you selected — the service is the index, not a source of stories.':'No sources are selected. Choose at least one under Sources.');return;}
+ const label=(job:{provider:string;site:string})=>job.provider==='sitefeed'?job.site:({bing:'Bing News',google:'Google News',hackernews:'Hacker News'} as Record<string,string>)[job.provider]||job.provider;
  Promise.allSettled(jobs.map(async job=>{const q=job.topic?job.topic.keywords.split(',').map(k=>k.trim()).filter(Boolean).join(' OR '):'';const params=new URLSearchParams({q,provider:job.provider,...(job.feed?{feed:job.feed}:{}),...(job.site?{site:job.site}:{})});const r=await fetch(feedEndpoint()+'?'+params,{signal:controller.signal});const data=await r.json() as {error:string;articles:Article[]};if(!r.ok)throw Error(data.error);return data.articles.map(a=>({...a,topic:job.topic?job.topic.name:matchTopic(a,topics)}));})).then(results=>{
  if(controller.signal.aborted)return;
  const all=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
  const seen=new Set<string>();const unique=all.filter(a=>{const title=a.title.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(a.url)||seen.has(title))return false;seen.add(a.url);seen.add(title);return true;});
  const sorted=unique.sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0));
  setFeed(sorted);
- if(results.every(r=>r.status==='rejected')){setError('News could not be loaded. Please try refreshing.');}
+ const broken=Array.from(new Set(results.flatMap((r,i)=>r.status==='rejected'?[label(jobs[i])]:[])));
+ if(results.every(r=>r.status==='rejected')){setError('Nothing could be loaded from '+broken.join(', ')+'. Check the addresses under View / edit sites, or press Refresh news to try again.');}
+ else if(broken.length){setError('Some sources did not answer: '+broken.join(', ')+'. Everything else below is up to date.');}
  else{const at=new Date().toISOString();setFetchedAt(at);writeFeedCache(feedKey,{articles:sorted,fetchedAt:at});}
  setLoading(false);
  });return()=>controller.abort();
