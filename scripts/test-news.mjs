@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost } from '../lib/news.ts';
+import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost, matchTopic } from '../lib/news.ts';
 const example = '<rss><item><title>A &amp; B</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Farticle</link><description>&lt;b&gt;Useful&lt;/b&gt; excerpt</description><News:Source>Example</News:Source></item><item><title>Bad</title><link>javascript:alert(1)</link></item></rss>';
 const parsed = parseFeed(example, 'OpenAI');
 assert.equal(parsed.length, 1);
@@ -54,4 +54,17 @@ assert.equal(sourceHost('https://www.nasa.gov/learning-resources/for-kids-and-st
 assert.equal(sourceHost('https://kids.nationalgeographic.com/'), 'kids.nationalgeographic.com', 'a real subdomain is kept');
 assert.equal(sourceHost('https://kids.frontiersin.org/'), 'kids.frontiersin.org');
 
-console.log('PASS: RSS and Atom parsing, site hostnames, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');
+// A feed is read once and offered to every topic; anything matching none is
+// still aggregated rather than dropped.
+const teenTopics = [
+  {name: 'Space and astronomy', keywords: 'Moon missions, Mars exploration, exoplanets'},
+  {name: 'Dinosaurs and fossils', keywords: 'dinosaur discoveries, fossil discoveries'},
+];
+assert.equal(matchTopic({title: 'New exoplanets found', excerpt: ''}, teenTopics), 'Space and astronomy');
+assert.equal(matchTopic({title: 'A fossil discoveries roundup', excerpt: ''}, teenTopics), 'Dinosaurs and fossils');
+assert.equal(matchTopic({title: 'Matches nothing at all', excerpt: ''}, teenTopics), '', 'unmatched items are kept, not tagged');
+assert.equal(matchTopic({title: 'X', excerpt: 'talks about Mars exploration'}, teenTopics), 'Space and astronomy', 'the body counts too');
+assert.equal(matchTopic({title: 'MOON MISSIONS explained', excerpt: ''}, teenTopics), 'Space and astronomy', 'matching ignores case');
+assert.equal(matchTopic({title: 'anything', excerpt: ''}, []), '');
+
+console.log('PASS: RSS and Atom parsing, site hostnames, topic matching, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');

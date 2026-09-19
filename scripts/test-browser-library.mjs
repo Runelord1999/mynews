@@ -59,7 +59,9 @@ assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad',url:'https
 const preFeed=JSON.parse(backup);
 preFeed.sites=[{name:'Legacy',url:'https://legacy.example/',searchUrl:''}];
 assert.equal(lib.parseBackup(JSON.stringify(preFeed)).sites[0].feedUrl,'');
-assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad feed',url:'https://example.com',searchUrl:'',feedUrl:'https://elsewhere.com/feed'}]}),'a feed must be on the same website');
+lib.writeLibrary({action:'sites',sites:[{name:'Elsewhere feed',url:'https://example.com',searchUrl:'',feedUrl:'https://feeds.elsewhere.com/rss'}]});
+assert.equal(lib.readLibrary().sites[0].feedUrl,'https://feeds.elsewhere.com/rss','a feed may live on another host');
+assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad feed',url:'https://example.com',searchUrl:'',feedUrl:'javascript:alert(1)'}]}),'an unsafe feed address is still refused');
 lib.writeLibrary({action:'sites',sites:[{name:'Good feed',url:'https://example.com',searchUrl:'',feedUrl:'https://example.com/rss'}]});
 assert.equal(lib.readLibrary().sites[0].feedUrl,'https://example.com/rss');
 const oldBackup=JSON.parse(backup);delete oldBackup.sites;

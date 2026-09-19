@@ -2,7 +2,7 @@
 
 Public website: https://runelord1999.github.io/mynews/
 
-Mynews is a personal news reader with topic tabs, live headlines and excerpts, bookmarks, and manually added URLs. It starts with Trump, Anthropic, OpenAI, Singularity, AGI, and AI Governance.
+Mynews is a personal content aggregator with topic tabs, live headlines and excerpts, bookmarks, and manually added URLs. It starts with Trump, Anthropic, OpenAI, Singularity, AGI, and AI Governance.
 
 No account or sign-in is needed. Topics and saved articles are stored in this browser's local storage; clearing site data removes them. Save Settings Online copies them to the server under a Settings ID so another browser or device can pick them up.
 
@@ -124,7 +124,7 @@ Twelve sources ship with the reader and appear under **News services**: Bing New
 
 Any combination can be selected at once, and the selection is remembered in this browser. Ars Technica and Futurism carry a full-text feed and are read directly from it. The rest are searched through the selected news indexes restricted to their hostnames — all of them in a single `site:a OR site:b` query per index, so selecting twelve sources costs no more requests than selecting three. Selecting only websites that have no full-text feed, with no search service enabled, fetches nothing: there is no index to run the search. The notice says so and offers a button that turns the services back on. Enabling a service does not widen the results — they still come only from the websites selected, because the service is the index rather than a source of stories. Clearing the selection entirely fetches nothing and says so.
 
-A feed address must be on the same hostname as its site, which rules out publishers that serve their feed from a separate host. **Test feed**, beside the field, reads the address through the Worker and says what came back: how many articles the feed holds, and how many of them match the current topic keywords. A feed that cannot be read and a feed that reads fine but matches nothing look identical on the page, and this tells them apart before the site is saved.
+A feed address may live on any public host, since publishers routinely serve theirs from a separate one. **Find feed** asks the website where its feed is: it reads the page's `<link rel="alternate">` declarations, falls back to a bounded set of common paths, and fills the field in. **Test feed**, beside the field, reads the address through the Worker and says what came back: how many articles the feed holds, and how many of them match the current topic keywords. A feed that cannot be read and a feed that reads fine but matches nothing look identical on the page, and this tells them apart before the site is saved.
 
 Site searches name the bare hostname, so `https://www.example.com/section` is searched as `site:example.com` and pages served without the `www.` prefix are not missed. A genuine subdomain such as `kids.example.com` is kept.
 

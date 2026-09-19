@@ -4,26 +4,18 @@ import {corsHeaders} from './api-cors';
 
 // The feed URL comes from the browser, so it is checked here rather than
 // trusted: same host as the saved site, public address only, http(s) only.
-function safeFeedUrl(feed: string, site: string) {
- const url = publicHttpUrl(feed);
- if (url.hostname !== site && !url.hostname.endsWith('.' + site)) throw Error('Feed must be on the same website.');
- return url.href;
-}
-
-// A publisher feed carries whatever the publisher just posted, so the topic's
-// keywords are applied here instead of by the upstream search engine.
-function matchesKeywords(article: Article, q: string) {
- const terms = q.split(/\s+OR\s+/).map(t => t.trim().toLowerCase()).filter(Boolean);
- if (!terms.length) return true;
- const haystack = (article.title + ' ' + article.excerpt).toLowerCase();
- return terms.some(term => haystack.includes(term));
+// A feed address is checked for being a public http(s) address, not for
+// sharing a hostname with its site: plenty of publishers serve theirs from a
+// separate host, and /api/article already reads any public address.
+function safeFeedUrl(feed: string) {
+ return publicHttpUrl(feed).href;
 }
 
 export async function handleFeed(request: Request, options: {allowedOrigins: string[]}) {
  const cors = corsHeaders(request, options.allowedOrigins, 'GET');
  if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: cors});
  const params = new URL(request.url).searchParams;
- const q = params.get('q')?.trim();
+ const q = params.get('q')?.trim() || '';
  const provider = params.get('provider') || 'bing';
  const site = params.get('site')?.trim() || '';
  const fail = (error: string, status: number) => Response.json({error}, {status, headers: {...cors, 'Cache-Control': 'no-store'}});
@@ -32,20 +24,23 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
  // publishers still costs one query per engine rather than a dozen.
  const hosts = site ? site.split(',').map(h => h.trim()).filter(Boolean) : [];
  const validHost = (h: string) => h.length <= 253 && /^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/i.test(h);
- if (!q || q.length > 300 || !['bing', 'google', 'hackernews', 'sitefeed'].includes(provider) || hosts.length > 15 || !hosts.every(validHost)) return fail('Invalid keywords or source.', 400);
- if (provider === 'sitefeed' && (!feed || feed.length > 4096 || hosts.length !== 1)) return fail('A site feed needs its website and feed address.', 400);
+ const isFeed = provider === 'sitefeed';
+ // A feed carries whatever the publisher posted, so it needs no keywords.
+ if ((!q && !isFeed) || q.length > 300 || !['bing', 'google', 'hackernews', 'sitefeed'].includes(provider) || hosts.length > 15 || !hosts.every(validHost)) return fail('Invalid keywords or source.', 400);
+ if (isFeed && (!feed || feed.length > 4096)) return fail('A site feed needs its feed address.', 400);
  try {
   let articles: Article[] = [];
   let total: number | undefined;
   const search = hosts.length ? '(' + q + ') (' + hosts.map(h => 'site:' + h).join(' OR ') + ')' : q;
   if (provider === 'sitefeed') {
-   let target; try {target = safeFeedUrl(feed, hosts[0]);} catch {return fail('That feed address cannot be used.', 400);}
+   let target; try {target = safeFeedUrl(feed);} catch {return fail('That feed address cannot be used.', 400);}
    const xml = await readRemote(target);
    const parsed = parseFeed(xml, q);
-   // Report what the feed held before filtering, so a feed that works but
-   // matches nothing can be told apart from one that cannot be read at all.
    total = parsed.length;
-   articles = parsed.filter(a => matchesKeywords(a, q)).map(a => ({...a, provider: hosts[0]}));
+   // Everything the feed holds is returned. Which topic each item answers is
+   // decided by the reader, against every topic at once, rather than here
+   // against one topic per request.
+   articles = parsed.map(a => ({...a, provider: hosts[0] || new URL(target).hostname.replace(/^www\./, '')}));
   } else if (provider === 'hackernews') {
    const terms = q.split(/\s+OR\s+/).map(t => t.trim()).filter(Boolean); if (terms.length > 10) throw Error('Too many keyword terms');
    const results = await Promise.all(terms.map(async term => {

@@ -7,7 +7,7 @@ const topicSchema=z.object({name:z.string().trim().min(1).max(40),keywords:z.str
 const articleSchema=z.object({id:z.string(),url:z.string().transform(safeUrl),title:z.string().trim().min(1).max(500),excerpt:z.string().max(1000),source:z.string().max(200),date:z.string().max(100),topic:z.string().max(40)});
 const siteSchema=z.object({name:z.string().trim().min(1).max(60),url:z.string().max(4096).transform(safeUrl),searchUrl:z.string().max(4096).default(''),feedUrl:z.string().max(4096).default('')})
  .refine(s=>!s.searchUrl||(s.searchUrl.includes('{query}')&&new URL(safeUrl(s.searchUrl.replaceAll('{query}','test'))).hostname===new URL(s.url).hostname),'Search URL must use this website and include {query}.')
- .refine(s=>!s.feedUrl||new URL(safeUrl(s.feedUrl)).hostname===new URL(s.url).hostname,'Feed URL must use this website.');
+ .refine(s=>!s.feedUrl||Boolean(safeUrl(s.feedUrl)),'Enter a valid feed address.');
 const librarySchema=z.object({topics:z.array(topicSchema).min(1).max(20),articles:z.array(articleSchema),sites:z.array(siteSchema).max(30).default([]),starterSitesVersion:z.number().optional(),removedSources:z.array(z.string().max(4200)).max(100).default([])});
 const backupSchema=librarySchema.extend({format:z.literal('mynews-settings'),version:z.literal(1),exportedAt:z.string(),fontSize:z.number().int().min(12).max(24),sources:z.array(z.string().max(4200)).max(100).optional()});
 export type SettingsBackup=z.infer<typeof backupSchema>;
@@ -79,6 +79,7 @@ export function feedEndpoint(){return apiBase()+'/api/feed';}
 export function settingsEndpoint(){return apiBase()+'/api/settings';}
 export function adminEndpoint(){return apiBase()+'/api/admin';}
 export function articleEndpoint(){return apiBase()+'/api/article';}
+export function discoverEndpoint(){return apiBase()+'/api/discover';}
 // Shown in error messages so a build pointed at the wrong backend is obvious.
 export function apiOrigin(){return apiBase()||location.origin;}
 

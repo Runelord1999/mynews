@@ -64,6 +64,15 @@ export function siteSourceId(site:NewsSite){return 'site:'+site.url;}
 // query stricter than the site really is, so a page served without it is
 // missed; dropping it matches the bare host and every subdomain.
 export function sourceHost(url:string){return new URL(url).hostname.replace(/^www\./,'');}
+
+// Which topic an item from a feed answers. A feed is read once and offered to
+// every topic, rather than fetched again per topic; anything matching none is
+// still aggregated, and shows under All stories.
+export function topicTerms(topic:Topic){return topic.keywords.split(',').map(k=>k.trim().toLowerCase()).filter(Boolean);}
+export function matchTopic(article:{title:string;excerpt:string},topics:Topic[]){
+ const haystack=(article.title+' '+article.excerpt).toLowerCase();
+ return topics.find(t=>topicTerms(t).some(term=>haystack.includes(term)))?.name??'';
+}
 export function allSources(sites:NewsSite[],removed:string[]=[]):Source[]{
  return [...services.filter(s=>!removed.includes(s.id)),...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl}))];
 }

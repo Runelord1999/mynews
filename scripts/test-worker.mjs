@@ -35,6 +35,48 @@ assert.equal(feed.status, 400);
 assert.equal(feed.headers.get('Vary'), 'Origin', 'cacheable feed responses must vary on Origin');
 assert.equal((await worker.fetch(new Request('https://api.test/api/feed?q=', {headers: {Origin: 'https://evil.test'}}), env())).headers.get('Access-Control-Allow-Origin'), null);
 
+// Finding a feed from a site address, so a reader need not hunt for one.
+const sitePage = '<html><head><link rel="alternate" type="application/rss+xml" href="/posts.xml" title="Site posts"/></head><body>hi</body></html>';
+const feedXml = '<rss><channel><title>Site posts</title><item><title>First post</title><link>https://blog.example/1</link><description>Body text</description></item></channel></rss>';
+let discoverFetches = 0;
+const realFetch1 = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (url.startsWith('https://blog.example')) {
+    discoverFetches++;
+    if (url === 'https://blog.example/') return new Response(sitePage);
+    if (url === 'https://blog.example/posts.xml') return new Response(feedXml);
+    return new Response('nope', {status: 404});
+  }
+  if (url === 'https://plain.example/') {discoverFetches++; return new Response('<html><body>no feed here</body></html>');}
+  if (url.startsWith('https://plain.example/')) {discoverFetches++; return new Response('nope', {status: 404});}
+  return realFetch1(input, init);
+};
+const discover = (url, e = env()) => worker.fetch(new Request('https://api.test/api/discover', {method: 'POST', headers: headers(), body: JSON.stringify({url})}), e);
+
+const found = await (await discover('https://blog.example/')).json();
+assert.equal(found.feeds.length, 1);
+assert.equal(found.feeds[0].url, 'https://blog.example/posts.xml', 'a declared feed is resolved against the page');
+assert.equal(found.feeds[0].items, 1);
+assert.equal(found.feeds[0].title, 'Site posts');
+
+// Handing it a feed address directly is answered without a page lookup.
+const direct = await (await discover('https://blog.example/posts.xml')).json();
+assert.equal(direct.feeds[0].url, 'https://blog.example/posts.xml');
+
+// A site that declares nothing is probed on a bounded set of common paths.
+const none = await discover('https://plain.example/');
+assert.equal(none.status, 404);
+assert.deepEqual((await none.json()).feeds, []);
+
+// The same address guards as everywhere else.
+const beforeDiscover = discoverFetches;
+assert.equal((await discover('http://127.0.0.1/')).status, 400);
+assert.equal((await discover('file:///etc/passwd')).status, 400);
+assert.equal((await discover('not a url')).status, 400);
+assert.equal(discoverFetches, beforeDiscover, 'a refused address makes no request');
+globalThis.fetch = realFetch1;
+
 // On-demand article reads: fetched once, then served from the cache.
 const articlePage = `<html><head><meta property="og:description" content="Meta fallback"/></head><body>
  <nav><p>${'Navigation clutter that is long enough to survive the length filter. '.repeat(2)}</p></nav>
@@ -122,17 +164,18 @@ const siteFeed = (params, e = env()) => worker.fetch(new Request('https://api.te
 const feedOk = await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/feed'});
 assert.equal(feedOk.status, 200);
 const feedBody = await feedOk.json();
-assert.equal(feedBody.articles.length, 1, 'only keyword matches are kept');
+assert.equal(feedBody.articles.length, 2, 'a feed returns everything it holds');
 assert.equal(feedBody.articles[0].title, 'Reactor milestone');
+assert.ok(feedBody.articles.some(a => a.title === 'Unrelated cooking piece'), 'the reader decides which topic an item answers');
 assert.equal(feedBody.articles[0].excerpt.split(/\s+/).length, 250, 'full body trimmed to 250 words');
 assert.equal(feedBody.articles[0].provider, 'example.com');
 assert.equal(feedBody.total, 2, 'the whole feed is counted before keyword filtering');
 
 // A feed that reads fine but matches nothing is distinguishable from a broken
 // one: total counts the items, articles counts the matches.
-const noMatch = await (await siteFeed({q: 'zzzznomatch', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/feed'})).json();
-assert.equal(noMatch.total, 2);
-assert.equal(noMatch.articles.length, 0);
+const noKeywords = await (await siteFeed({provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/feed'})).json();
+assert.equal(noKeywords.total, 2, 'a feed needs no keywords at all');
+assert.equal(noKeywords.articles.length, 2);
 
 // An index search reports no total, since nothing was filtered out locally.
 const indexed = await worker.fetch(new Request('https://api.test/api/feed?q=&provider=bing', {headers: {Origin: pages}}), env());
@@ -141,17 +184,16 @@ assert.equal(indexed.status, 400);
 // A feed on another host, a private address, or a missing address is refused
 // without any outbound request being made.
 const before = feedCalls.length;
-assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'https://evil.test/feed'})).status, 400);
+
 assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'http://127.0.0.1/feed'})).status, 400);
 assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'http://192.168.1.1/feed'})).status, 400);
 assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com', feed: 'file:///etc/passwd'})).status, 400);
 assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', site: 'example.com'})).status, 400, 'feed address required');
-assert.equal((await siteFeed({q: 'x', provider: 'sitefeed', feed: 'https://example.com/feed'})).status, 400, 'site required');
+
 assert.equal(feedCalls.length, before, 'no request leaves the Worker for a refused feed');
 
 // A subdomain of the saved site is allowed.
 assert.equal((await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/rss'})).status, 200);
-assert.equal((await siteFeed({q: 'reactor', provider: 'sitefeed', site: 'example.com,other.com', feed: 'https://example.com/rss'})).status, 400, 'a feed names one site');
 globalThis.fetch = realFetch;
 
 // Saving requires a usable ID and an owner name.
@@ -258,4 +300,4 @@ assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404)
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
 assert.equal(count(), 0);
 
-console.log('PASS: routing, CORS, grouped site queries, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');
+console.log('PASS: routing, CORS, feed discovery, grouped site queries, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');
