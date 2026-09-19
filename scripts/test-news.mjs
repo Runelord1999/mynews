@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers } from '../lib/news.ts';
+import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost } from '../lib/news.ts';
 const example = '<rss><item><title>A &amp; B</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Farticle</link><description>&lt;b&gt;Useful&lt;/b&gt; excerpt</description><News:Source>Example</News:Source></item><item><title>Bad</title><link>javascript:alert(1)</link></item></rss>';
 const parsed = parseFeed(example, 'OpenAI');
 assert.equal(parsed.length, 1);
@@ -48,4 +48,10 @@ assert.equal(withOwn[12].id, siteSourceId(own));
 assert.ok(!services.some(s => s.id === siteSourceId(own)));
 assert.ok(services.every(s => s.id.startsWith('service:') || engineIds.includes(s.id)));
 
-console.log('PASS: RSS and Atom parsing, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');
+// A site: query names the bare host, so a page served without www still counts.
+assert.equal(sourceHost('https://www.snexplores.org/'), 'snexplores.org');
+assert.equal(sourceHost('https://www.nasa.gov/learning-resources/for-kids-and-students/'), 'nasa.gov');
+assert.equal(sourceHost('https://kids.nationalgeographic.com/'), 'kids.nationalgeographic.com', 'a real subdomain is kept');
+assert.equal(sourceHost('https://kids.frontiersin.org/'), 'kids.frontiersin.org');
+
+console.log('PASS: RSS and Atom parsing, site hostnames, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');

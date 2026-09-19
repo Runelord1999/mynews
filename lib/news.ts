@@ -60,6 +60,10 @@ export const services:Source[]=[...engines,...publishers];
 export const engineIds=engines.map(e=>e.id);
 export const serviceHosts=new Set(publishers.map(p=>new URL(p.url!).hostname.replace(/^www\./,'')));
 export function siteSourceId(site:NewsSite){return 'site:'+site.url;}
+// The hostname a site: query should name. Keeping the www. prefix makes the
+// query stricter than the site really is, so a page served without it is
+// missed; dropping it matches the bare host and every subdomain.
+export function sourceHost(url:string){return new URL(url).hostname.replace(/^www\./,'');}
 export function allSources(sites:NewsSite[],removed:string[]=[]):Source[]{
  return [...services.filter(s=>!removed.includes(s.id)),...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl}))];
 }

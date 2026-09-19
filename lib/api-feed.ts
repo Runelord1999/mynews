@@ -36,11 +36,16 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
  if (provider === 'sitefeed' && (!feed || feed.length > 4096 || hosts.length !== 1)) return fail('A site feed needs its website and feed address.', 400);
  try {
   let articles: Article[] = [];
+  let total: number | undefined;
   const search = hosts.length ? '(' + q + ') (' + hosts.map(h => 'site:' + h).join(' OR ') + ')' : q;
   if (provider === 'sitefeed') {
    let target; try {target = safeFeedUrl(feed, hosts[0]);} catch {return fail('That feed address cannot be used.', 400);}
    const xml = await readRemote(target);
-   articles = parseFeed(xml, q).filter(a => matchesKeywords(a, q)).map(a => ({...a, provider: hosts[0]}));
+   const parsed = parseFeed(xml, q);
+   // Report what the feed held before filtering, so a feed that works but
+   // matches nothing can be told apart from one that cannot be read at all.
+   total = parsed.length;
+   articles = parsed.filter(a => matchesKeywords(a, q)).map(a => ({...a, provider: hosts[0]}));
   } else if (provider === 'hackernews') {
    const terms = q.split(/\s+OR\s+/).map(t => t.trim()).filter(Boolean); if (terms.length > 10) throw Error('Too many keyword terms');
    const results = await Promise.all(terms.map(async term => {
@@ -60,6 +65,6 @@ export async function handleFeed(request: Request, options: {allowedOrigins: str
    const xml = await readRemote(url); if (!xml.includes('<rss')) throw Error('Invalid feed');
    articles = parseFeed(xml, q).map(a => ({...a, provider: provider === 'google' ? 'Google News' : 'Bing News', excerpt: provider === 'google' ? 'Coverage from ' + a.source + '. Open the publisher’s article for the full report.' : a.excerpt}));
   }
-  return Response.json({articles, fetchedAt: new Date().toISOString()}, {headers: {...cors, 'Cache-Control': 'public, max-age=300'}});
+  return Response.json({articles, ...(total === undefined ? {} : {total}), fetchedAt: new Date().toISOString()}, {headers: {...cors, 'Cache-Control': 'public, max-age=300'}});
  } catch {return fail('This source is temporarily unavailable. Other sources may still have stories.', 502);}
 }

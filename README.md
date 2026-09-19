@@ -43,7 +43,7 @@ npm run deploy:worker   # publishes mynews-api
 
 The published reader points at `https://mynews-api.darylysm.workers.dev` by default, so no further configuration is needed. To send it somewhere else — a custom domain, or a second Worker — set the repository variable `MYNEWS_API_BASE` (Settings → Secrets and variables → Actions → Variables) to that origin and re-run the Pages workflow. The default is built in rather than left to a variable so a deploy that forgets one cannot silently send settings to another server.
 
-Run `npm test` to exercise the Worker's routing, CORS, settings sharing and admin flow without deploying.
+Run `npm test` for all five suites. The last one drives a real page: it starts the reader on port 5180 and checks in a browser that a disabled news service stops being requested, that a stale feed cache is not shown, and that removed sources stay removed across a reload. It uses `playwright-core` with whatever Chromium, Chrome or Edge is already installed rather than downloading a browser; set `MYNEWS_BROWSER` to an executable if none is found. `npm run test:browser` runs just that suite.
 
 ## Reading behavior
 
@@ -124,7 +124,9 @@ Twelve sources ship with the reader and appear under **News services**: Bing New
 
 Any combination can be selected at once, and the selection is remembered in this browser. Ars Technica and Futurism carry a full-text feed and are read directly from it. The rest are searched through the selected news indexes restricted to their hostnames — all of them in a single `site:a OR site:b` query per index, so selecting twelve sources costs no more requests than selecting three. Selecting only publishers and no index searches them through all three. Clearing the selection entirely fetches nothing and says so.
 
-A feed address must be on the same hostname as its site, which rules out publishers that serve their feed from a separate host.
+A feed address must be on the same hostname as its site, which rules out publishers that serve their feed from a separate host. **Test feed**, beside the field, reads the address through the Worker and says what came back: how many articles the feed holds, and how many of them match the current topic keywords. A feed that cannot be read and a feed that reads fine but matches nothing look identical on the page, and this tells them apart before the site is saved.
+
+Site searches name the bare hostname, so `https://www.example.com/section` is searched as `site:example.com` and pages served without the `www.` prefix are not missed. A genuine subdomain such as `kids.example.com` is kept.
 
 Selection references:
 - Reuters standards: https://reutersagency.com/about/standards-values/

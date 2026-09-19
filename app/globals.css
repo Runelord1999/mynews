@@ -146,3 +146,6 @@ footer{margin-top:22px;padding:15px 0}
 .saved-sites>.saved-site-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px;padding:7px 0;font-size:13px}.saved-site-row>a strong,.saved-site-row>a small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saved-site-row>a small{margin-top:2px}.saved-sites .saved-site-row button{padding:6px 8px;white-space:nowrap;font-size:12px}.saved-sites .saved-site-row .backup-button{color:#315b40}.saved-site-row .edit-site{justify-content:center}
 
 .source-section-heading{display:flex;align-items:center;gap:6px;margin-bottom:6px}.source-section-heading .site-form-title{margin:0}
+
+/* Result of checking a feed address before saving it. */
+.feed-check{border-left:3px solid #b9c9b3;padding-left:9px;color:#42604a}

@@ -12,7 +12,7 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/u
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {Toaster,toast} from 'sonner';
-import {defaults,safeUrl,allSources,type Topic,type Article,type NewsSite} from '@/lib/news';
+import {defaults,safeUrl,allSources,sourceHost,type Topic,type Article,type NewsSite} from '@/lib/news';
 import {readLibrary,writeLibrary,feedEndpoint,articleEndpoint,readFeedCache,writeFeedCache,restoreBackup,readSourceSelection,type SettingsBackup} from '@/lib/browser-library';
 export default function Newsroom(){
  const [sites,setSites]=useState<NewsSite[]>([]),[sitesOpen,setSitesOpen]=useState(false),[sources,setSources]=useState<string[]>([]);
@@ -72,12 +72,12 @@ export default function Newsroom(){
  const picked=allSources(sites,removedSources).filter(x=>chosen.has(x.id));
  const chosenEngines=picked.filter(x=>x.kind==='engine').map(x=>x.id);
  const feedSources=picked.filter(x=>x.kind==='feed'&&x.feedUrl&&x.url);
- const searchHosts=picked.filter(x=>x.kind==='search'&&x.url).map(x=>new URL(x.url!).hostname).slice(0,15);
+ const searchHosts=picked.filter(x=>x.kind==='search'&&x.url).map(x=>sourceHost(x.url!)).slice(0,15);
  // Disabled engines must never be re-enabled to search publisher websites.
  const searchEngines=chosenEngines;
  const jobs=[
   ...topics.flatMap(t=>chosenEngines.map(p=>({topic:t,provider:p,feed:'',site:''}))),
-  ...topics.flatMap(t=>feedSources.map(x=>({topic:t,provider:'sitefeed',feed:x.feedUrl!,site:new URL(x.url!).hostname}))),
+  ...topics.flatMap(t=>feedSources.map(x=>({topic:t,provider:'sitefeed',feed:x.feedUrl!,site:sourceHost(x.url!)}))),
   ...(searchHosts.length?topics.flatMap(t=>searchEngines.map(p=>({topic:t,provider:p,feed:'',site:searchHosts.join(',')}))):[]),
  ];
  if(!jobs.length){setFeed([]);setLoading(false);setError(searchHosts.length?'The selected websites need a news service to search them. Enable a service under Sources, or choose a website with an RSS feed.':'No sources are selected. Choose at least one under Sources.');return;}

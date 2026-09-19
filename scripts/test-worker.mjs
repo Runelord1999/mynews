@@ -126,6 +126,17 @@ assert.equal(feedBody.articles.length, 1, 'only keyword matches are kept');
 assert.equal(feedBody.articles[0].title, 'Reactor milestone');
 assert.equal(feedBody.articles[0].excerpt.split(/\s+/).length, 250, 'full body trimmed to 250 words');
 assert.equal(feedBody.articles[0].provider, 'example.com');
+assert.equal(feedBody.total, 2, 'the whole feed is counted before keyword filtering');
+
+// A feed that reads fine but matches nothing is distinguishable from a broken
+// one: total counts the items, articles counts the matches.
+const noMatch = await (await siteFeed({q: 'zzzznomatch', provider: 'sitefeed', site: 'example.com', feed: 'https://example.com/feed'})).json();
+assert.equal(noMatch.total, 2);
+assert.equal(noMatch.articles.length, 0);
+
+// An index search reports no total, since nothing was filtered out locally.
+const indexed = await worker.fetch(new Request('https://api.test/api/feed?q=&provider=bing', {headers: {Origin: pages}}), env());
+assert.equal(indexed.status, 400);
 
 // A feed on another host, a private address, or a missing address is refused
 // without any outbound request being made.

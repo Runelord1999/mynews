@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
-const {chromium}=await import(process.env.MYNEWS_PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({headless:true,...(process.env.MYNEWS_BROWSER?{executablePath:process.env.MYNEWS_BROWSER}:{})});
+const {chromium}=await import(process.env.MYNEWS_PLAYWRIGHT_MODULE||'playwright-core');
+// Use whatever Chromium this machine already has rather than downloading one:
+// an explicit path, the build Playwright installed, or the Chrome or Edge that
+// comes with the desktop.
+async function launchBrowser(){
+ const installed=process.env.PLAYWRIGHT_BROWSERS_PATH?process.env.PLAYWRIGHT_BROWSERS_PATH+'/chromium':'';
+ const attempts=[
+  ...(process.env.MYNEWS_BROWSER?[{executablePath:process.env.MYNEWS_BROWSER}]:[]),
+  ...(installed?[{executablePath:installed}]:[]),
+  {channel:'chrome'},{channel:'msedge'},{},
+ ];
+ let last;
+ for(const options of attempts){try{return await chromium.launch({headless:true,...options});}catch(error){last=error;}}
+ throw Error('No Chromium, Chrome or Edge could be launched. Install one, or set MYNEWS_BROWSER to a browser executable. Last error: '+(last&&last.message));
+}
+const browser=await launchBrowser();
 try{
  const context=await browser.newContext();
  const sources=['bing','google','hackernews','service:arstechnica.com','service:apnews.com'];
