@@ -24,5 +24,30 @@ try{
  requests.length=0;await page.reload();await page.getByRole('heading',{name:'sitefeed result',exact:true}).waitFor();assert.equal(requests.length,0,'Corrected cache should be reused on reload');
  await page.evaluate(()=>localStorage.setItem('mynews-sources',JSON.stringify(['service:apnews.com'])));
  await page.reload();await page.getByText('The selected websites need a news service to search them.',{exact:false}).waitFor();assert.equal(requests.length,0,'Search-only sites must not silently enable engines');assert.equal(await page.locator('.story').count(),0);
+ // All built-ins can be removed; Select all must not resurrect them.
+ await page.getByRole('button',{name:'All sites (12)',exact:true}).click();
+ assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Add form starts hidden');
+ await page.getByRole('button',{name:'Add Website',exact:true}).click();
+ await page.getByLabel('Website name',{exact:true}).fill('Personal feed');
+ await page.getByLabel('Website URL',{exact:true}).fill('https://personal.example/');
+ await page.getByRole('button',{name:'Add site',exact:true}).click();
+ assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Successful add hides form');
+ await page.getByRole('button',{name:'Edit Personal feed',exact:true}).click();
+ await page.getByLabel('Website name',{exact:true}).fill('Renamed feed');
+ await page.getByRole('button',{name:'Save changes',exact:true}).click();
+ await page.getByRole('button',{name:'Remove Renamed feed',exact:true}).click();
+ for(const name of ['Bing News','Google News','Hacker News','Associated Press','Ars Technica','Futurism','BBC','Reuters','Guardian','Aljazeera','CNA','CBC']){
+  await page.getByRole('button',{name:'Remove '+name,exact:true}).click();
+ }
+ assert.equal(await page.locator('.service-row').count(),0);
+ await page.getByRole('button',{name:'Use all services and websites',exact:true}).click();
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources'))),[]);
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.reload();
+ await page.getByRole('button',{name:'All sites (0)',exact:true}).click();
+ assert.equal(await page.locator('.service-row').count(),0,'Removed defaults stay gone after reload');
+ await page.getByRole('button',{name:'Reset to Default',exact:true}).click();
+ assert.equal(await page.locator('.service-row').count(),12);
+ assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources')))).length,12);
  console.log('PASS: Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

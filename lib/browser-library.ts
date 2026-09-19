@@ -1,15 +1,15 @@
 import {defaults, safeUrl, type Article, type Topic, type NewsSite} from './news';
 import {z} from 'zod';
 import {starterSites, starterSitesVersion} from './starter-sites';
-import {serviceHosts} from './news';
+import {serviceHosts,allSources,defaultSources} from './news';
 const key = 'mynews-library-v1';
 const topicSchema=z.object({name:z.string().trim().min(1).max(40),keywords:z.string().trim().min(1).max(300)});
 const articleSchema=z.object({id:z.string(),url:z.string().transform(safeUrl),title:z.string().trim().min(1).max(500),excerpt:z.string().max(1000),source:z.string().max(200),date:z.string().max(100),topic:z.string().max(40)});
 const siteSchema=z.object({name:z.string().trim().min(1).max(60),url:z.string().max(4096).transform(safeUrl),searchUrl:z.string().max(4096).default(''),feedUrl:z.string().max(4096).default('')})
  .refine(s=>!s.searchUrl||(s.searchUrl.includes('{query}')&&new URL(safeUrl(s.searchUrl.replaceAll('{query}','test'))).hostname===new URL(s.url).hostname),'Search URL must use this website and include {query}.')
  .refine(s=>!s.feedUrl||new URL(safeUrl(s.feedUrl)).hostname===new URL(s.url).hostname,'Feed URL must use this website.');
-const librarySchema=z.object({topics:z.array(topicSchema).min(1).max(20),articles:z.array(articleSchema),sites:z.array(siteSchema).max(30).default([]),starterSitesVersion:z.number().optional()});
-const backupSchema=librarySchema.extend({format:z.literal('mynews-settings'),version:z.literal(1),exportedAt:z.string(),fontSize:z.number().int().min(12).max(24)});
+const librarySchema=z.object({topics:z.array(topicSchema).min(1).max(20),articles:z.array(articleSchema),sites:z.array(siteSchema).max(30).default([]),starterSitesVersion:z.number().optional(),removedSources:z.array(z.string().max(4200)).max(100).default([])});
+const backupSchema=librarySchema.extend({format:z.literal('mynews-settings'),version:z.literal(1),exportedAt:z.string(),fontSize:z.number().int().min(12).max(24),sources:z.array(z.string().max(4200)).max(100).optional()});
 export type SettingsBackup=z.infer<typeof backupSchema>;
 export function parseBackup(text:string):SettingsBackup {
  if(new Blob([text]).size>5*1024*1024)throw Error('Choose a settings file smaller than 5 MB.');
@@ -19,16 +19,19 @@ export function parseBackup(text:string):SettingsBackup {
  return backup;
 }
 export function exportBackup(fontSize:number):string {
- return JSON.stringify(parseBackup(JSON.stringify({format:'mynews-settings',version:1,exportedAt:new Date().toISOString(),fontSize,...readLibrary()})),null,2);
+ const state=readLibrary();
+ return JSON.stringify(parseBackup(JSON.stringify({format:'mynews-settings',version:1,exportedAt:new Date().toISOString(),fontSize,...state,sources:readSourceSelection(state)})),null,2);
 }
 export function restoreBackup(backup:SettingsBackup) {
  const valid=parseBackup(JSON.stringify(backup));
- localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,starterSitesVersion}));
+ localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,removedSources:valid.removedSources,starterSitesVersion}));
+ valid.sources=readSourceSelection(valid,valid.sources??allSources(valid.sites,valid.removedSources).map(s=>s.id));
+ localStorage.setItem('mynews-sources',JSON.stringify(valid.sources));
  return valid;
 }
-export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[]}{
+export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[];removedSources:string[]}{
  const raw=localStorage.getItem(key);
- const state=raw?librarySchema.parse(JSON.parse(raw)):{topics:defaults,articles:[],sites:[] as NewsSite[],starterSitesVersion:0};
+ const state=raw?librarySchema.parse(JSON.parse(raw)):{topics:defaults,articles:[],sites:[] as NewsSite[],starterSitesVersion:0,removedSources:[] as string[]};
  const version=state.starterSitesVersion??0;
  if(version<starterSitesVersion){
   const host=(url:string)=>new URL(url).hostname.replace(/^www\./,'');
@@ -50,8 +53,10 @@ export function writeLibrary(input:unknown){const b=z.discriminatedUnion('action
  z.object({action:z.literal('topics'),topics:z.array(topicSchema).min(1).max(20)}),
  z.object({action:z.literal('save'),article:articleSchema}),
  z.object({action:z.literal('remove'),id:z.string()}),
+ z.object({action:z.literal('removedSources'),removedSources:z.array(z.string().max(4200)).max(100)}),
  z.object({action:z.literal('sites'),sites:z.array(siteSchema).max(30)})
 ]).parse(input);const state=readLibrary();
+ if(b.action==='removedSources')state.removedSources=b.removedSources;
  if(b.action==='sites'){state.sites=b.sites;}
  if(b.action==='topics'){if(new Set(b.topics.map(t=>t.name.toLowerCase())).size!==b.topics.length)throw Error('Topic names must be unique.');state.topics=b.topics;}
  if(b.action==='save'){b.article.id=b.article.url;state.articles=[b.article,...state.articles.filter(a=>a.url!==b.article.url)];}
@@ -94,4 +99,11 @@ export function writeFeedCache(key:string,value:FeedCache){
  const trimmed=Object.fromEntries(Object.entries(all).sort((a,b)=>Date.parse(b[1].fetchedAt||'')-Date.parse(a[1].fetchedAt||'')).slice(0,4));
  try{localStorage.setItem(feedKey,JSON.stringify(trimmed));}
  catch{try{localStorage.setItem(feedKey,JSON.stringify({[key]:entry}));}catch{/* storage is full or blocked; the edition is still on screen */}}
+}
+
+export function readSourceSelection(state:{sites:NewsSite[];removedSources:string[]},selection?:string[]){
+ const valid=new Set(allSources(state.sites,state.removedSources).map(s=>s.id));
+ let picked:unknown=selection;
+ if(picked===undefined){try{picked=JSON.parse(localStorage.getItem('mynews-sources')||'null');}catch{}}
+ return (Array.isArray(picked)?picked:defaultSources()).filter((id):id is string=>typeof id==='string'&&valid.has(id));
 }

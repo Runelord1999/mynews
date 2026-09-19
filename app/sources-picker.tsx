@@ -3,8 +3,8 @@ import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {Check,ChevronDown} from 'lucide-react';
 import {allSources,services,type NewsSite} from '@/lib/news';
 
-export default function SourcesPicker({sites,sources,onChange}:{sites:NewsSite[];sources:string[];onChange:(next:string[])=>void}){
- const list=allSources(sites);
+export default function SourcesPicker({sites,sources,onChange,removedSources}:{removedSources:string[];sites:NewsSite[];sources:string[];onChange:(next:string[])=>void}){
+ const list=allSources(sites,removedSources);
  const chosen=new Set(sources);
  const active=list.filter(s=>chosen.has(s.id));
  const label=active.length===0?'No sources':active.length===list.length?'All sources ('+list.length+')':active.length===1?active[0].name:active.length+' of '+list.length+' sources';
@@ -19,7 +19,7 @@ export default function SourcesPicker({sites,sources,onChange}:{sites:NewsSite[]
   <button className="sources-trigger" aria-label={'Sources: '+label}>{label}<ChevronDown size={14}/></button>
  </PopoverTrigger><PopoverContent className="source-menu" align="start">
   <div className="source-menu-head"><strong>Sources</strong><div><button className="link-button" onClick={()=>onChange(list.map(s=>s.id))}>Select all</button><button className="link-button" onClick={()=>onChange([])}>Clear</button></div></div>
-  <div className="source-group"><span className="eyebrow">NEWS SERVICES</span>{services.map(row)}</div>
+  <div className="source-group"><span className="eyebrow">NEWS SERVICES</span>{services.filter(s=>!removedSources.includes(s.id)).map(row)}</div>
   <div className="source-group"><span className="eyebrow">YOUR SITES</span>{ownSites.length?ownSites.map(row):<p className="sites-help">Nothing here yet. Websites you add under Your Search Source Sites appear in this group.</p>}</div>
   <p className="sites-help">Sources with a full-text feed are read directly. The rest are searched through the selected news indexes, restricted to those websites, in one query.</p>
  </PopoverContent></Popover>;

@@ -60,8 +60,8 @@ export const services:Source[]=[...engines,...publishers];
 export const engineIds=engines.map(e=>e.id);
 export const serviceHosts=new Set(publishers.map(p=>new URL(p.url!).hostname.replace(/^www\./,'')));
 export function siteSourceId(site:NewsSite){return 'site:'+site.url;}
-export function allSources(sites:NewsSite[]):Source[]{
- return [...services,...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl}))];
+export function allSources(sites:NewsSite[],removed:string[]=[]):Source[]{
+ return [...services.filter(s=>!removed.includes(s.id)),...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl}))];
 }
 // Everything the reader ships with is on to begin with. Sites a reader adds
 // are opted into deliberately.

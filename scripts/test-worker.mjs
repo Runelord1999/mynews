@@ -19,7 +19,7 @@ const built = await build({entryPoints: ['worker/index.ts'], bundle: true, platf
 const worker = (await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))).default;
 
 const pages = 'https://runelord1999.github.io';
-const backup = {format: 'mynews-settings', version: 1, exportedAt: new Date().toISOString(), fontSize: 14, topics: [{name: 'AI', keywords: 'AGI'}], sites: [{name: 'Example', url: 'https://example.com/', searchUrl: '', feedUrl: ''}], articles: []};
+const backup = {sources:['site:https://example.com/'],removedSources:['bing','google','hackernews'],format: 'mynews-settings', version: 1, exportedAt: new Date().toISOString(), fontSize: 14, topics: [{name: 'AI', keywords: 'AGI'}], sites: [{name: 'Example', url: 'https://example.com/', searchUrl: '', feedUrl: ''}], articles: []};
 
 let limiterAllows = true;
 const env = extra => ({DB, ALLOWED_ORIGINS: pages, SETTINGS_RATE_LIMITER: {async limit() {return {success: limiterAllows};}}, ...extra});
@@ -183,6 +183,8 @@ assert.ok(!JSON.stringify(sqlite.prepare('SELECT * FROM settings').all()).includ
 // Sharing: anyone with the ID gets the same settings and sees the owner.
 const shared = await (await settings({action: 'apply', id: 'daryl-markets'})).json();
 assert.deepEqual(shared.backup.sites, backup.sites);
+assert.deepEqual(shared.backup.sources,backup.sources);
+assert.deepEqual(shared.backup.removedSources,backup.removedSources);
 assert.equal(shared.owner, 'Daryl');
 assert.equal((await settings({action: 'apply', id: 'never-saved-id'})).status, 404);
 
