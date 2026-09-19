@@ -143,7 +143,7 @@ footer{margin-top:22px;padding:15px 0}
 .headlines-only .article-grid{align-items:start}
 
 /* Keep saved websites as compact as the built-in service rows. */
-.saved-sites>.saved-site-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px;padding:7px 0;font-size:13px}.saved-site-row>a strong,.saved-site-row>a small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saved-site-row>a small{margin-top:2px}.saved-sites .saved-site-row button{padding:6px 8px;white-space:nowrap;font-size:12px}.saved-sites .saved-site-row .backup-button{color:#315b40}.saved-site-row .edit-site{justify-content:center}
+.saved-sites>.saved-site-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto auto;gap:6px;padding:7px 0;font-size:13px}.saved-site-row>a strong,.saved-site-row>a small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saved-site-row>a small{margin-top:2px}.saved-sites .saved-site-row button{padding:6px 8px;white-space:nowrap;font-size:12px}.saved-sites .saved-site-row .backup-button{color:#315b40}.saved-site-row .edit-site{justify-content:center}
 
 .source-section-heading{display:flex;align-items:center;gap:6px;margin-bottom:6px}.source-section-heading .site-form-title{margin:0}
 
@@ -192,3 +192,26 @@ main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opa
 /* The saved websites heading carries the same summary as the services one. */
 .source-section-heading>small{color:#77866f;font-size:11px}
 .source-section-heading>.backup-button{margin-left:auto}
+
+/* One settings dialog, three pages. */
+.settings-dialog{max-width:760px!important}
+.settings-tabs{display:flex;gap:4px;border-bottom:1px solid #dce4d7;margin-bottom:4px}
+.settings-tab{display:inline-flex;align-items:center;gap:7px;background:none;border:0;border-bottom:2px solid transparent;padding:9px 13px;font-size:14px;color:#5c6b58;margin-bottom:-1px}
+.settings-tab:hover{color:#24543f}
+.settings-tab.is-on{color:#193e32;font-weight:600;border-bottom-color:#193e32}
+.settings-panel{display:grid;gap:12px;max-height:66vh;overflow:auto;padding-right:2px}
+.settings-panel>form{display:grid;gap:12px}
+.settings-icon{display:inline-flex;align-items:center;gap:8px;border:1px solid #cbd5c7;background:#fff;border-radius:5px;padding:9px 13px;font-size:13px;color:#24402f}
+.settings-icon:hover{background:#eef3ea}
+@media(max-width:600px){.settings-tab{padding:8px;font-size:12px}.settings-tab span{display:none}}
+
+/* Per-site links on a saved row, replacing the ones the strip used to carry. */
+.saved-site-row>.site-link{display:flex;align-items:center;justify-content:center;padding:6px;color:#526b51;border:1px solid #dde4d9;border-radius:4px}
+.saved-site-row>.site-link:hover{background:#eef3ea;color:#24402f}
+
+.suggestion-list{display:grid;gap:2px;max-height:48vh;overflow:auto;border-top:1px solid #eef2ec;padding-top:6px}
+
+/* Per-site links on a saved row, replacing the ones the strip used to carry. */
+.saved-site-row>.site-link{display:flex;align-items:center;justify-content:center;padding:6px;color:#526b51;border:1px solid #dde4d9;border-radius:4px}
+.saved-site-row>.site-link:hover{background:#eef3ea;color:#24402f}
+.suggestion-list{display:grid;gap:2px;max-height:48vh;overflow:auto;border-top:1px solid #eef2ec;padding-top:6px}

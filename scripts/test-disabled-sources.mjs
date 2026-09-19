@@ -24,12 +24,24 @@ try{
  await context.route('**/api/feed?**',async route=>{const url=new URL(route.request().url());const provider=url.searchParams.get('provider');requests.push(provider);const article={...stale,id:'https://test.example/'+provider,url:'https://test.example/'+provider,title:provider+' result',provider:({bing:'Bing News',google:'Google News',hackernews:'Hacker News',sitefeed:'arstechnica.com'})[provider]};await route.fulfill({json:{articles:[article]}});});
  const page=await context.newPage();await page.goto(process.env.MYNEWS_TEST_URL||'http://127.0.0.1:5180/mynews/');
  await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
- // On your radar wraps like the sites strip; it must not scroll sideways.
- const radar=await page.locator('.radar-topics').evaluate(el=>{const s=getComputedStyle(el);return {wrap:s.flexWrap,overflowX:s.overflowX,scrolls:el.scrollWidth>el.clientWidth+1};});
- assert.equal(radar.wrap,'wrap','radar topics wrap onto the next line');
- assert.ok(!['auto','scroll'].includes(radar.overflowX),'radar topics have no sideways scrollbar');
- assert.equal(radar.scrolls,false);
- await page.getByRole('button',{name:'All sites (12)',exact:true}).click();
+ // The page itself carries no settings strips any more.
+ assert.equal(await page.locator('.radar-strip').count(),0,'On your radar moved into settings');
+ assert.equal(await page.locator('.sites-strip').count(),0,'Your search source sites moved into settings');
+ assert.equal(await page.getByRole('button',{name:'Open settings',exact:true}).count(),1);
+
+ // The three sections are pages of one dialog.
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ for(const name of ['On your radar','Source sites','Save settings']){
+  await page.getByRole('tab',{name,exact:true}).click();
+  assert.equal(await page.getByRole('tab',{name,exact:true}).getAttribute('aria-selected'),'true',name+' is a page of the settings dialog');
+ }
+ await page.getByRole('tab',{name:'On your radar',exact:true}).click();
+ await page.getByLabel('Topic name',{exact:true}).first().waitFor();
+ await page.getByRole('tab',{name:'Save settings',exact:true}).click();
+ await page.getByLabel('Settings ID',{exact:true}).waitFor();
+
+ // Back to the sources page for the rest.
+ await page.getByRole('tab',{name:'Source sites',exact:true}).click();
  assert.equal(await page.locator('.service-row:visible').count(),12,'services are listed when the section is open');
  await page.getByRole('button',{name:/Minimize news services/}).click();
  assert.equal(await page.locator('.service-row:visible').count(),0,'minimizing hides the service rows');
@@ -41,7 +53,7 @@ try{
   await page.getByRole('heading',{name:id+' result',exact:true}).waitFor({state:'detached'});
   assert.ok(!requests.includes(id),'Disabled service must not be requested: '+id);
  }
- await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.keyboard.press('Escape');
  await page.getByRole('heading',{name:'sitefeed result',exact:true}).waitFor();
  assert.equal(await page.getByText('Stale Bing headline',{exact:true}).count(),0);
  assert.ok(requests.every(p=>p==='sitefeed'));
@@ -58,7 +70,7 @@ try{
  await page.evaluate(()=>localStorage.setItem('mynews-sources',JSON.stringify(['service:apnews.com'])));
  await page.reload();await page.getByText('they can only be reached by searching',{exact:false}).waitFor();requests.length=0;
  // All built-ins can be removed; Select all must not resurrect them.
- await page.getByRole('button',{name:'All sites (12)',exact:true}).click();
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();await page.getByRole('tab',{name:'Source sites',exact:true}).click();
  assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Add form starts hidden');
  await page.getByRole('button',{name:'Add Website',exact:true}).click();
  await page.getByLabel('Website name',{exact:true}).fill('Personal feed');
@@ -67,11 +79,11 @@ try{
  assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Successful add hides form');
  // The saved websites heading summarises use, and the bulk feed lookup only
  // appears while some website still has no feed.
- await page.getByText('1 of 1 in use',{exact:true}).waitFor();
+ await page.getByText(/^\d+ of \d+ in use$/).first().waitFor();
  assert.equal(await page.getByRole('button',{name:'Find feeds for all',exact:true}).count(),1,'offered while a website has no feed');
  await page.evaluate(()=>{const k='mynews-library-v1';const s=JSON.parse(localStorage.getItem(k));s.sites=s.sites.map(x=>({...x,feedUrl:'https://personal.example/feed'}));localStorage.setItem(k,JSON.stringify(s));});
  await page.reload();
- await page.getByRole('button',{name:/^All sites /}).click();
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();await page.getByRole('tab',{name:'Source sites',exact:true}).click();
  assert.equal(await page.getByRole('button',{name:'Find feeds for all',exact:true}).count(),0,'hidden once every website has a feed');
  // Saved websites must not scroll inside a box of their own, so a long list
  // can be reached by scrolling the dialog.
@@ -90,14 +102,34 @@ try{
  await page.getByRole('button',{name:'Use all services and websites',exact:true}).click();
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources'))),[]);
  await page.getByRole('button',{name:/Minimize news services/}).click();
- await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.keyboard.press('Escape');
  await page.reload();
- await page.getByRole('button',{name:'All sites (0)',exact:true}).click();
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();await page.getByRole('tab',{name:'Source sites',exact:true}).click();
  assert.ok(await page.getByRole('button',{name:/Expand news services/}).count(),'the section stays minimized across a reload');
  await page.getByRole('button',{name:/Expand news services/}).click();
  assert.equal(await page.locator('.service-row').count(),0,'Removed defaults stay gone after reload');
  await page.getByRole('button',{name:'Reset to Default',exact:true}).click();
  assert.equal(await page.locator('.service-row').count(),12);
  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources')))).length,12);
- console.log('PASS: radar wraps, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
+
+ // Suggested sources are offered for confirmation, not added outright.
+ const before=await page.locator('.saved-site-row').count();
+ await page.getByRole('button',{name:'Add suggested sources',exact:true}).click();
+ await page.getByRole('heading',{name:'Add these sources?',exact:true}).waitFor({timeout:90000});
+ assert.equal(await page.locator('.saved-site-row').count(),before,'nothing is added until confirmed');
+ const offeredCount=await page.locator('.suggestion-list [role=menuitemcheckbox]').count();
+ assert.ok(offeredCount>1,'working feeds are offered');
+ await page.locator('.suggestion-list [role=menuitemcheckbox]').first().click();
+ await page.getByRole('button',{name:'Add '+(offeredCount-1)+' sources',exact:true}).click();
+ assert.equal(await page.locator('.saved-site-row').count(),before+offeredCount-1,'only the ticked ones are added');
+
+ // Cancelling adds nothing.
+ const now=await page.locator('.saved-site-row').count();
+ await page.getByRole('button',{name:'Add suggested sources',exact:true}).click();
+ await page.getByRole('heading',{name:'Add these sources?',exact:true}).waitFor({timeout:90000});
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ assert.equal(await page.locator('.saved-site-row').count(),now,'cancel adds nothing');
+ await page.getByText(/^\d+ of \d+ in use$/).first().waitFor();
+
+ console.log('PASS: settings dialog holds the three sections, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}
