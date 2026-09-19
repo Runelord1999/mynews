@@ -37,7 +37,13 @@ try{
  assert.ok(requests.every(p=>p==='sitefeed'));
  requests.length=0;await page.reload();await page.getByRole('heading',{name:'sitefeed result',exact:true}).waitFor();assert.equal(requests.length,0,'Corrected cache should be reused on reload');
  await page.evaluate(()=>localStorage.setItem('mynews-sources',JSON.stringify(['service:apnews.com'])));
- await page.reload();await page.getByText('The selected websites need a news service to search them.',{exact:false}).waitFor();assert.equal(requests.length,0,'Search-only sites must not silently enable engines');assert.equal(await page.locator('.story').count(),0);
+ await page.reload();await page.getByText('they can only be reached by searching',{exact:false}).waitFor();assert.equal(requests.length,0,'Search-only sites must not silently enable engines');assert.equal(await page.locator('.story').count(),0);
+ // The notice offers the fix; pressing it must actually search.
+ await page.getByRole('button',{name:/^Turn on /}).click();
+ await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
+ assert.ok(requests.includes('bing')&&requests.includes('google')&&requests.includes('hackernews'),'the fix enables every search service');
+ await page.evaluate(()=>localStorage.setItem('mynews-sources',JSON.stringify(['service:apnews.com'])));
+ await page.reload();await page.getByText('they can only be reached by searching',{exact:false}).waitFor();requests.length=0;
  // All built-ins can be removed; Select all must not resurrect them.
  await page.getByRole('button',{name:'All sites (12)',exact:true}).click();
  assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Add form starts hidden');

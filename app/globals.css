@@ -149,3 +149,6 @@ footer{margin-top:22px;padding:15px 0}
 
 /* Result of checking a feed address before saving it. */
 .feed-check{border-left:3px solid #b9c9b3;padding-left:9px;color:#42604a}
+
+/* The fix for a notice, offered next to the explanation of it. */
+.notice-fix{margin-top:10px;font-size:13px;padding:9px 14px}
