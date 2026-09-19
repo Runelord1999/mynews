@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost, matchTopic } from '../lib/news.ts';
+import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost, matchTopic, topicQueryGroups } from '../lib/news.ts';
+import { suggestedSites } from '../lib/suggested-sites.ts';
 const example = '<rss><item><title>A &amp; B</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Farticle</link><description>&lt;b&gt;Useful&lt;/b&gt; excerpt</description><News:Source>Example</News:Source></item><item><title>Bad</title><link>javascript:alert(1)</link></item></rss>';
 const parsed = parseFeed(example, 'OpenAI');
 assert.equal(parsed.length, 1);
@@ -67,4 +68,28 @@ assert.equal(matchTopic({title: 'X', excerpt: 'talks about Mars exploration'}, t
 assert.equal(matchTopic({title: 'MOON MISSIONS explained', excerpt: ''}, teenTopics), 'Space and astronomy', 'matching ignores case');
 assert.equal(matchTopic({title: 'anything', excerpt: ''}, []), '');
 
-console.log('PASS: RSS and Atom parsing, site hostnames, topic matching, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');
+// Keywords are packed into as few queries as the limit allows.
+const many = Array.from({length: 20}, (_, i) => ({name: 'T' + i, keywords: Array.from({length: 6}, (_, j) => 'kw' + i + '_' + j).join(', ')}));
+const packed = topicQueryGroups(many);
+assert.ok(packed.length < many.length, 'twenty topics do not need twenty queries');
+assert.ok(packed.every(q => q.length <= 280), 'every query fits the length the API accepts');
+const allTerms = many.flatMap(t => t.keywords.split(',').map(k => k.trim()));
+assert.ok(allTerms.every(term => packed.some(q => q.includes(term))), 'no keyword is dropped');
+assert.deepEqual(topicQueryGroups([]), []);
+assert.deepEqual(topicQueryGroups([{name: 'One', keywords: 'alpha, beta'}]), ['alpha OR beta']);
+// A single topic longer than the budget is truncated rather than rejected.
+assert.ok(topicQueryGroups([{name: 'Long', keywords: Array.from({length: 40}, (_, i) => 'termtermterm' + i).join(', ')}]).every(q => q.length <= 280));
+
+// Suggested sources are well-formed before anything tries to read them.
+assert.ok(suggestedSites.length >= 10, 'enough candidates to cover the usual topics');
+for (const site of suggestedSites) {
+  assert.ok(site.name && site.covers, site.name + ' says what it covers');
+  assert.equal(safeUrl(site.url), new URL(site.url).href, site.name + ' has a usable site address');
+  assert.ok(site.feedUrl, site.name + ' names a feed');
+  assert.equal(safeUrl(site.feedUrl), new URL(site.feedUrl).href, site.name + ' has a usable feed address');
+  assert.ok(['http:', 'https:'].includes(new URL(site.feedUrl).protocol));
+}
+assert.equal(new Set(suggestedSites.map(s => s.feedUrl)).size, suggestedSites.length, 'no duplicate feeds');
+assert.equal(new Set(suggestedSites.map(s => s.name)).size, suggestedSites.length, 'no duplicate names');
+
+console.log('PASS: RSS and Atom parsing, site hostnames, topic matching, query packing, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');

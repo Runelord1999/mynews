@@ -69,6 +69,22 @@ export function sourceHost(url:string){return new URL(url).hostname.replace(/^ww
 // every topic, rather than fetched again per topic; anything matching none is
 // still aggregated, and shows under All stories.
 export function topicTerms(topic:Topic){return topic.keywords.split(',').map(k=>k.trim().toLowerCase()).filter(Boolean);}
+// Twenty topics against three indexes is sixty requests for what an index can
+// answer in a handful: keywords are packed into as few queries as the length
+// limit allows, and which topic each result answers is decided afterwards.
+export function topicQueryGroups(topics:Topic[],budget=280):string[]{
+ const groups:string[]=[];let current='';
+ for(const topic of topics){
+  const q=topicTerms(topic).join(' OR ');
+  if(!q)continue;
+  if(current&&current.length+4+q.length>budget){groups.push(current);current='';}
+  current=current?current+' OR '+q:q;
+  if(current.length>budget){groups.push(current.slice(0,budget));current='';}
+ }
+ if(current)groups.push(current);
+ return groups;
+}
+
 export function matchTopic(article:{title:string;excerpt:string},topics:Topic[]){
  const haystack=(article.title+' '+article.excerpt).toLowerCase();
  return topics.find(t=>topicTerms(t).some(term=>haystack.includes(term)))?.name??'';

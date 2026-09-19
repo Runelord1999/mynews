@@ -4,7 +4,7 @@ import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {Check,ChevronDown,ChevronUp} from 'lucide-react';
 import {allSources,services,type NewsSite} from '@/lib/news';
 
-export default function SourcesPicker({sites,sources,onChange,removedSources}:{removedSources:string[];sites:NewsSite[];sources:string[];onChange:(next:string[])=>void}){
+export default function SourcesPicker({sites,sources,onChange,removedSources,onlySites,onOnlySitesChange}:{removedSources:string[];sites:NewsSite[];sources:string[];onChange:(next:string[])=>void;onlySites:boolean;onOnlySitesChange:(next:boolean)=>void}){
  // Folded with the same preference as the services list in All sites: one
  // answer to "do I want to see the built-in sources right now".
  const [servicesOpen,setServicesOpen]=useState(()=>{try{return localStorage.getItem('mynews-collapsed-services')!=='true';}catch{return true;}});
@@ -27,6 +27,10 @@ export default function SourcesPicker({sites,sources,onChange,removedSources}:{r
   <div className="source-menu-head"><strong>Sources</strong><div><button className="link-button" onClick={()=>onChange(list.map(s=>s.id))}>Select all</button><button className="link-button" onClick={()=>onChange([])}>Clear</button></div></div>
   <div className="source-group"><button className="section-toggle eyebrow" aria-expanded={servicesOpen} aria-controls="source-services" onClick={toggleServices} aria-label={(servicesOpen?"Minimize":"Expand")+" news services"}>{servicesOpen?<ChevronUp size={13}/>:<ChevronDown size={13}/>}NEWS SERVICES<small>{shownServices.filter(s=>chosen.has(s.id)).length} of {shownServices.length}</small></button><div id="source-services" hidden={!servicesOpen}>{shownServices.map(row)}</div></div>
   <div className="source-group"><span className="eyebrow">YOUR SITES</span>{ownSites.length?ownSites.map(row):<p className="sites-help">Nothing here yet. Websites you add under Your Search Source Sites appear in this group.</p>}</div>
+  <button role="menuitemcheckbox" aria-checked={onlySites} className={'source-option only-sites '+(onlySites?'is-on':'')} onClick={()=>onOnlySitesChange(!onlySites)}>
+   <span className="source-tick">{onlySites&&<Check size={13}/>}</span>
+   <span className="source-name">Only from my sites<small>Use the news services as the index, not as sources of their own</small></span>
+  </button>
   <p className="sites-help">Sources with a full-text feed are read directly. The rest are searched through the selected news indexes, restricted to those websites, in one query.</p>
  </PopoverContent></Popover>;
 }

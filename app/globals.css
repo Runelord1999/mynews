@@ -185,3 +185,6 @@ main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opa
    sideways, so every topic is reachable without dragging a strip. */
 .radar-strip{flex-wrap:wrap}
 .radar-topics{flex-wrap:wrap;overflow:visible}
+
+/* Whether the indexes also contribute results of their own. */
+.only-sites{border-top:1px solid #eef2ec;margin-top:6px;padding-top:9px}

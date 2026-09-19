@@ -52,6 +52,9 @@ try{
  await page.getByRole('button',{name:/^Turn on /}).click();
  await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
  assert.ok(requests.includes('bing')&&requests.includes('google')&&requests.includes('hackernews'),'the fix enables every search service');
+ // Only from my sites is remembered; its effect on requests is covered by the
+ // unit-level query packing and by the source model.
+ assert.equal(await page.evaluate(()=>localStorage.getItem('mynews-only-sites')),null,'off unless asked for');
  await page.evaluate(()=>localStorage.setItem('mynews-sources',JSON.stringify(['service:apnews.com'])));
  await page.reload();await page.getByText('they can only be reached by searching',{exact:false}).waitFor();requests.length=0;
  // All built-ins can be removed; Select all must not resurrect them.
