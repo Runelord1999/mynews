@@ -143,7 +143,7 @@ footer{margin-top:22px;padding:15px 0}
 .headlines-only .article-grid{align-items:start}
 
 /* Keep saved websites as compact as the built-in service rows. */
-.saved-sites>.saved-site-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto auto;gap:6px;padding:7px 0;font-size:13px}.saved-site-row>a strong,.saved-site-row>a small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saved-site-row>a small{margin-top:2px}.saved-sites .saved-site-row button{padding:6px 8px;white-space:nowrap;font-size:12px}.saved-sites .saved-site-row .backup-button{color:#315b40}.saved-site-row .edit-site{justify-content:center}
+.saved-sites>.saved-site-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto auto auto;gap:6px;padding:7px 0;font-size:13px}.saved-site-row>a strong,.saved-site-row>a small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saved-site-row>a small{margin-top:2px}.saved-sites .saved-site-row button{padding:6px 8px;white-space:nowrap;font-size:12px}.saved-sites .saved-site-row .backup-button{color:#315b40}.saved-site-row .edit-site{justify-content:center}
 
 .source-section-heading{display:flex;align-items:center;gap:6px;margin-bottom:6px}.source-section-heading .site-form-title{margin:0}
 
@@ -223,3 +223,20 @@ main[data-fetching="true"] .article-grid,main[data-fetching="true"] .loading{opa
 .panel-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:10px;border-bottom:1px solid #dce4d7}
 .panel-actions .primary,.panel-actions .secondary{padding:9px 14px;font-size:13px}
 .panel-actions>.count{margin-left:auto;font-size:11px;color:#77866f}
+
+/* Reading filters: an audience label per source, and a list of blocked words.
+   Both are the reader's own judgement, so they read as choices, not verdicts. */
+.audience-choice{border:0;padding:0;margin:0}
+.audience-choice>legend{padding:0;margin-bottom:6px}
+.audience-options{display:grid;gap:2px;margin-bottom:6px}
+.audience-options .source-option{border:1px solid transparent}
+.audience-options .source-option.is-on{border-color:#c3d3c0;background:#f2f7ef}
+.blocked-words{display:grid;gap:6px}
+.blocked-words textarea{width:100%;padding:9px 10px;border:1px solid #cbd5c7;border-radius:5px;font:inherit;font-size:13px;resize:vertical}
+.audience-select{border:1px solid #dde4d9;border-radius:4px;background:#fff;padding:5px 4px;font-size:11px;color:#3c5741;max-width:96px}
+.service-status .audience-chip{display:block;font-size:10px;color:#8a9686;letter-spacing:.04em}
+.settings-panel select{padding:9px 10px;border:1px solid #cbd5c7;border-radius:5px;font:inherit;font-size:13px;background:#fff;width:100%}
+.settings-panel .audience-select{padding:5px 4px;font-size:11px;width:auto}
+.filter-note{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:3px 8px;border:1px solid #cbd5c7;border-radius:999px;background:#f2f7ef;font-size:11px;color:#2d5540}
+.filter-note:hover{background:#e6efe1}
+@media(max-width:600px){.saved-sites>.saved-site-row{grid-template-columns:minmax(0,1fr) auto auto;row-gap:4px}}

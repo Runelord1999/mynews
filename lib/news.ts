@@ -1,6 +1,23 @@
 export type Topic = {name:string; keywords:string};
 export type Article = {id:string; title:string; excerpt:string; url:string; source:string; date:string; topic:string; provider?:string};
-export type NewsSite = {name:string;url:string;searchUrl:string;feedUrl:string};
+export type NewsSite = {name:string;url:string;searchUrl:string;feedUrl:string;audience?:Audience};
+
+// Who a source writes for. This is a label the reader applies, not a rating
+// anyone awards: no feed format carries one and no body issues one for
+// articles. It says who the publisher writes for, which is the only thing that
+// can be known from the outside, and says nothing about a given article.
+export type Audience='children'|'teen'|'general';
+export const audienceRank:Record<Audience,number>={children:0,teen:1,general:2};
+export const audiences:{id:Audience;label:string;hint:string}[]=[
+ {id:'children',label:'Children',hint:'Written for readers under about 13'},
+ {id:'teen',label:'Teen',hint:'Written for teenagers'},
+ {id:'general',label:'General',hint:'Written for adults; nothing is held back'},
+];
+export function isAudience(value:unknown):value is Audience{return value==='children'||value==='teen'||value==='general';}
+// An unlabelled source is treated as General. Guessing the other way would let
+// a source the reader never looked at through the filter.
+export function siteAudience(site:{audience?:Audience}):Audience{return isAudience(site.audience)?site.audience:'general';}
+export function audienceAllows(max:Audience,of:Audience){return audienceRank[of]<=audienceRank[max];}
 export function siteSearchLink(site:NewsSite,keywords:string){return site.searchUrl?safeUrl(site.searchUrl.replaceAll('{query}',encodeURIComponent(keywords))):'https://www.google.com/search?q='+encodeURIComponent('site:'+new URL(site.url).hostname+' ('+keywords+')');}
 export const defaults:Topic[] = ['Trump','Anthropic','OpenAI','Singularity','AGI','AI Governance'].map(name=>({name,keywords:name}));
 export function safeUrl(value:string) { const u=new URL(value); if(!['http:','https:'].includes(u.protocol)||u.username||u.password) throw new Error('Use a valid HTTP or HTTPS article URL.'); return u.href; }
@@ -38,12 +55,14 @@ export function parseFeed(xml:string,topic:string,limit=summaryWords):Article[] 
 // this reader ships with are all services: they need no setup and are the same
 // for everyone. "Your sites" holds only what a reader adds themselves.
 export type SourceKind='engine'|'feed'|'search';
-export type Source={id:string;name:string;kind:SourceKind;hint:string;url?:string;feedUrl?:string};
-const publisher=(name:string,url:string,feedUrl=''):Source=>({id:'service:'+new URL(url).hostname.replace(/^www\./,''),name,kind:feedUrl?'feed':'search',hint:feedUrl?'Full-text feed':'Searched by site',url,feedUrl});
+export type Source={id:string;name:string;kind:SourceKind;hint:string;url?:string;feedUrl?:string;audience:Audience};
+// Everything built in is General: a whole-web index cannot be held to an
+// audience, and none of these publishers writes for children.
+const publisher=(name:string,url:string,feedUrl=''):Source=>({id:'service:'+new URL(url).hostname.replace(/^www\./,''),name,kind:feedUrl?'feed':'search',hint:feedUrl?'Full-text feed':'Searched by site',url,feedUrl,audience:'general'});
 export const engines:Source[]=[
- {id:'bing',name:'Bing News',kind:'engine',hint:'News index'},
- {id:'google',name:'Google News',kind:'engine',hint:'News index'},
- {id:'hackernews',name:'Hacker News',kind:'engine',hint:'Discussions'},
+ {id:'bing',name:'Bing News',kind:'engine',hint:'News index',audience:'general'},
+ {id:'google',name:'Google News',kind:'engine',hint:'News index',audience:'general'},
+ {id:'hackernews',name:'Hacker News',kind:'engine',hint:'Discussions',audience:'general'},
 ];
 export const publishers:Source[]=[
  publisher('Associated Press','https://apnews.com/'),
@@ -90,8 +109,29 @@ export function matchTopic(article:{title:string;excerpt:string},topics:Topic[])
  return topics.find(t=>topicTerms(t).some(term=>haystack.includes(term)))?.name??'';
 }
 export function allSources(sites:NewsSite[],removed:string[]=[]):Source[]{
- return [...services.filter(s=>!removed.includes(s.id)),...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl}))];
+ return [...services.filter(s=>!removed.includes(s.id)),...sites.map(s=>({id:siteSourceId(s),name:s.name,kind:(s.feedUrl?'feed':'search') as SourceKind,hint:s.feedUrl?'Full-text feed':'Searched by site',url:s.url,feedUrl:s.feedUrl,audience:siteAudience(s)}))];
 }
 // Everything the reader ships with is on to begin with. Sites a reader adds
 // are opted into deliberately.
 export function defaultSources(){return services.map(s=>s.id);}
+
+// A list of words that drop a story. Matching is on whole words after
+// punctuation is flattened, so "ass" does not hide Cassini and "gun" does not
+// hide Burgundy; a term with spaces is matched as a phrase. It reads the
+// headline and the excerpt, which is all the reader ever sees on a card — the
+// article behind an innocuous headline is not checked and cannot be.
+export function parseBlockedWords(value:string,limit=200):string[]{
+ return [...new Set(value.split(/[,\n]/).map(w=>w.trim().toLowerCase().replace(/\s+/g,' ')).filter(Boolean).filter(w=>w.length<=40))].slice(0,limit);
+}
+export function blockedWordsText(words:string[]){return words.join(', ');}
+function flatten(text:string){return ' '+text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()+' ';}
+// Returns the word that matched, so the reader can be told why a story went.
+export function blockedBy(article:{title:string;excerpt:string},words:string[]):string{
+ if(!words.length)return '';
+ const haystack=flatten(article.title+' '+article.excerpt);
+ for(const word of words){
+  const term=flatten(word).trim();
+  if(term&&haystack.includes(' '+term+' '))return word;
+ }
+ return '';
+}

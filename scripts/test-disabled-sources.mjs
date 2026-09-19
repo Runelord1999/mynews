@@ -31,7 +31,7 @@ try{
 
  // The three sections are pages of one dialog.
  await page.getByRole('button',{name:'Open settings',exact:true}).click();
- for(const name of ['Keyword Topics','Source sites','Save settings']){
+ for(const name of ['Keyword Topics','Source sites','Reading filters','Save settings']){
   await page.getByRole('tab',{name,exact:true}).click();
   assert.equal(await page.getByRole('tab',{name,exact:true}).getAttribute('aria-selected'),'true',name+' is a page of the settings dialog');
  }
@@ -68,6 +68,62 @@ try{
  await page.getByRole('button',{name:'Save to a file',exact:true}).click();
  await page.waitForTimeout(300);
  assert.equal(await page.locator('.settings-error').count(),0,'cancelling reports nothing');
+
+ // Reading filters: an audience label per source, and a blocked-words list.
+ await page.getByRole('tab',{name:'Reading filters',exact:true}).click();
+ const filterActions=await page.locator('.settings-panel .panel-actions').boundingBox();
+ const audienceBox=await page.locator('.audience-choice').boundingBox();
+ assert.ok(filterActions.y<audienceBox.y,'Save filters leads the page like the others');
+ assert.equal(await page.getByRole('radio',{name:/^General/}).getAttribute('aria-checked'),'true','no audience filter to begin with');
+ assert.equal(await page.locator('.filter-note').count(),0,'nothing is shown on the page while both filters are off');
+ // Blocked words hide a story that is already on screen, without refetching.
+ requests.length=0;
+ await page.getByLabel('Hide stories containing these words',{exact:true}).fill('bing, war crime');
+ await page.getByRole('button',{name:'Save filters',exact:true}).click();
+ await page.getByRole('heading',{name:'bing result',exact:true}).waitFor({state:'detached'});
+ assert.equal(requests.length,0,'a word filter is applied to what is on screen, not by searching again');
+ await page.getByRole('heading',{name:'google result',exact:true}).waitFor();
+ const note=page.locator('.filter-note');
+ await note.waitFor();
+ assert.match(await note.innerText(),/1 hidden/,'the page says how many stories the words took out');
+ // Whole words only: "bing" must not take out a headline that merely contains it.
+ await note.click();
+ await page.getByLabel('Hide stories containing these words',{exact:true}).fill('bin');
+ await page.getByRole('button',{name:'Save filters',exact:true}).click();
+ await page.getByRole('heading',{name:'bing result',exact:true}).waitFor();
+ // An audience filter drops whole sources, so it does change what is fetched.
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ await page.getByRole('tab',{name:'Reading filters',exact:true}).click();
+ await page.getByLabel('Hide stories containing these words',{exact:true}).fill('');
+ await page.getByRole('radio',{name:/^Teen/}).click();
+ await page.getByRole('button',{name:'Save filters',exact:true}).click();
+ await page.getByText('none of your',{exact:false}).waitFor();
+ assert.equal(await page.locator('.story').count(),0,'every built-in source is General, so a Teen filter leaves nothing');
+ // Labelling a website Teen gives the filter something to keep.
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ await page.getByRole('tab',{name:'Source sites',exact:true}).click();
+ await page.getByRole('button',{name:'Add Website',exact:true}).click();
+ await page.getByLabel('Website name',{exact:true}).fill('Teen feed');
+ await page.getByLabel('Website URL',{exact:true}).fill('https://teen.example/');
+ await page.getByLabel('Full-text feed URL (optional)',{exact:true}).fill('https://teen.example/feed');
+ await page.getByLabel('Written for',{exact:true}).selectOption('teen');
+ await page.getByRole('button',{name:'Add site',exact:true}).click();
+ await page.keyboard.press('Escape');
+ await page.getByRole('heading',{name:'sitefeed result',exact:true}).waitFor();
+ assert.equal(await page.locator('.story').count(),1,'only the Teen-labelled website is read');
+ assert.ok(requests.every(p=>p==='sitefeed'),'a General search service is not queried under a Teen filter');
+ // The label is stored with the site and can be changed from the row.
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ await page.getByRole('tab',{name:'Source sites',exact:true}).click();
+ assert.equal(await page.getByLabel('Audience for Teen feed',{exact:true}).inputValue(),'teen');
+ await page.getByLabel('Audience for Teen feed',{exact:true}).selectOption('general');
+ await page.getByRole('tab',{name:'Reading filters',exact:true}).click();
+ await page.getByRole('radio',{name:/^General/}).click();
+ await page.getByRole('button',{name:'Save filters',exact:true}).click();
+ assert.equal(await page.locator('.filter-note').count(),0,'turning the filters off clears the notice');
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ await page.getByRole('tab',{name:'Source sites',exact:true}).click();
+ await page.getByRole('button',{name:'Remove Teen feed',exact:true}).click();
 
  // Back to the sources page for the rest.
  await page.getByRole('tab',{name:'Source sites',exact:true}).click();
@@ -164,5 +220,5 @@ try{
  assert.equal(await page.locator('.saved-site-row').count(),now,'cancel adds nothing');
  await page.getByText(/^\d+ of \d+ in use$/).first().waitFor();
 
- console.log('PASS: settings dialog holds the three sections, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
+ console.log('PASS: settings dialog holds the four sections, audience labels drop whole sources and blocked words hide stories without refetching, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

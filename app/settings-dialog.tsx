@@ -1,17 +1,19 @@
 'use client';
 import {useState} from 'react';
 import {Dialog,DialogContent,DialogTitle} from '@/components/ui/dialog';
-import {Save,ListFilter,Globe} from 'lucide-react';
+import {Save,ListFilter,Globe,ShieldCheck} from 'lucide-react';
 import SettingsManager from './settings-manager';
 import TopicsPanel from './topics-panel';
 import SitesPanel from './sites-panel';
+import FiltersPanel from './filters-panel';
 import type {SettingsBackup} from '@/lib/browser-library';
-import type {Topic,NewsSite} from '@/lib/news';
+import type {Topic,NewsSite,Audience} from '@/lib/news';
 
-export type SettingsTab='topics'|'sites'|'backup';
+export type SettingsTab='topics'|'sites'|'filters'|'backup';
 const tabs:{id:SettingsTab;label:string;icon:typeof Save}[]=[
  {id:'topics',label:'Keyword Topics',icon:ListFilter},
  {id:'sites',label:'Source sites',icon:Globe},
+ {id:'filters',label:'Reading filters',icon:ShieldCheck},
  {id:'backup',label:'Save settings',icon:Save},
 ];
 
@@ -24,6 +26,7 @@ export default function SettingsDialog(props:{
  sites:NewsSite[];onSitesChange:(sites:NewsSite[])=>void;keywords:string;
  sources:string[];onSourcesChange:(next:string[])=>void;
  removedSources:string[];onRemovedSourcesChange:(next:string[])=>void;
+ maxAudience:Audience;blockedWords:string[];onSaveFilters:(next:{maxAudience:Audience;blockedWords:string[]})=>Promise<void>|void;
  fontSize:number;libraryReady:boolean;onApplyBackup:(backup:SettingsBackup)=>void;
 }){
  const [busy]=useState(false);
@@ -36,6 +39,7 @@ export default function SettingsDialog(props:{
    )}</div>
    {props.tab==='topics'&&<TopicsPanel topics={props.topics} onSave={props.onSaveTopics} onDone={close}/>}
    {props.tab==='sites'&&<SitesPanel sites={props.sites} onChange={props.onSitesChange} keywords={props.keywords} sources={props.sources} onSourcesChange={props.onSourcesChange} removedSources={props.removedSources} onRemovedSourcesChange={props.onRemovedSourcesChange}/>}
+   {props.tab==='filters'&&<FiltersPanel sites={props.sites} removedSources={props.removedSources} maxAudience={props.maxAudience} blockedWords={props.blockedWords} onSave={props.onSaveFilters} onDone={close}/>}
    {props.tab==='backup'&&<SettingsManager fontSize={props.fontSize} ready={props.libraryReady} onApply={props.onApplyBackup} onDone={close}/>}
   </DialogContent>
  </Dialog>;

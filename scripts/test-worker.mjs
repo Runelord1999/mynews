@@ -235,7 +235,11 @@ assert.ok(!JSON.stringify(sqlite.prepare('SELECT * FROM settings').all()).includ
 
 // Sharing: anyone with the ID gets the same settings and sees the owner.
 const shared = await (await settings({action: 'apply', id: 'daryl-markets'})).json();
-assert.deepEqual(shared.backup.sites, backup.sites);
+// The Worker validates what it stores, so a site saved without an audience
+// label comes back carrying the default rather than being rejected.
+assert.deepEqual(shared.backup.sites, backup.sites.map(site => ({...site, audience: 'general'})));
+assert.equal(shared.backup.maxAudience, 'general', 'reading filters default off through the Worker too');
+assert.deepEqual(shared.backup.blockedWords, []);
 assert.deepEqual(shared.backup.sources,backup.sources);
 assert.deepEqual(shared.backup.removedSources,backup.removedSources);
 assert.equal(shared.owner, 'Daryl');

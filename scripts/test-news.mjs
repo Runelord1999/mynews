@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost, matchTopic, topicQueryGroups } from '../lib/news.ts';
+import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost, matchTopic, topicQueryGroups, audiences, audienceRank, audienceAllows, siteAudience, isAudience, parseBlockedWords, blockedWordsText, blockedBy } from '../lib/news.ts';
 import { suggestedSites } from '../lib/suggested-sites.ts';
 const example = '<rss><item><title>A &amp; B</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Farticle</link><description>&lt;b&gt;Useful&lt;/b&gt; excerpt</description><News:Source>Example</News:Source></item><item><title>Bad</title><link>javascript:alert(1)</link></item></rss>';
 const parsed = parseFeed(example, 'OpenAI');
@@ -92,4 +92,61 @@ for (const site of suggestedSites) {
 assert.equal(new Set(suggestedSites.map(s => s.feedUrl)).size, suggestedSites.length, 'no duplicate feeds');
 assert.equal(new Set(suggestedSites.map(s => s.name)).size, suggestedSites.length, 'no duplicate names');
 
-console.log('PASS: RSS and Atom parsing, site hostnames, topic matching, query packing, source list and defaults, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');
+// Audience labels. Three tiers, most restrictive first, and everything built
+// in is General: a whole-web index cannot be held to an audience.
+assert.deepEqual(audiences.map(a => a.id), ['children', 'teen', 'general']);
+assert.ok(audiences.every(a => a.label && a.hint));
+assert.deepEqual([audienceRank.children, audienceRank.teen, audienceRank.general], [0, 1, 2]);
+assert.ok(services.every(s => s.audience === 'general'), 'no built-in service claims to be for children');
+assert.ok(['children', 'teen', 'general'].every(isAudience));
+assert.ok(!isAudience('PG') && !isAudience('') && !isAudience(undefined), 'film ratings are not audiences');
+
+// A site with no label counts as General, so an unconsidered source is held
+// back by a filter rather than let through.
+assert.equal(siteAudience({}), 'general');
+assert.equal(siteAudience({audience: 'nonsense'}), 'general');
+assert.equal(siteAudience({audience: 'children'}), 'children');
+assert.ok(audienceAllows('general', 'general') && audienceAllows('general', 'children'), 'General is the filter turned off');
+assert.ok(audienceAllows('teen', 'teen') && audienceAllows('teen', 'children'));
+assert.ok(!audienceAllows('teen', 'general'), 'a General source is dropped by a Teen filter');
+assert.ok(!audienceAllows('children', 'teen') && !audienceAllows('children', 'general'));
+
+// The label travels into the source list, so the reader's own judgement is
+// what the filter acts on.
+const labelled = allSources([
+  {name: 'Kids site', url: 'https://kids.example/', searchUrl: '', feedUrl: 'https://kids.example/feed', audience: 'children'},
+  {name: 'Unlabelled', url: 'https://plain.example/', searchUrl: '', feedUrl: ''},
+]);
+assert.equal(labelled.find(s => s.name === 'Kids site').audience, 'children');
+assert.equal(labelled.find(s => s.name === 'Unlabelled').audience, 'general');
+assert.equal(labelled.filter(s => audienceAllows('children', s.audience)).length, 1, 'only the labelled site survives a Children filter');
+
+// Blocked words. Parsing accepts commas or new lines, folds case, drops blanks
+// and duplicates, and is bounded.
+assert.deepEqual(parseBlockedWords(' Murder, shooting \n MURDER\n\n,  '), ['murder', 'shooting']);
+assert.deepEqual(parseBlockedWords('war   crime'), ['war crime'], 'a phrase keeps one space');
+assert.equal(parseBlockedWords(Array.from({length: 300}, (_, i) => 'w' + i).join(',')).length, 200);
+assert.equal(parseBlockedWords('x'.repeat(41) + ', ok').length, 1, 'an over-long term is dropped, not truncated');
+assert.equal(blockedWordsText(['murder', 'war crime']), 'murder, war crime');
+assert.deepEqual(parseBlockedWords(blockedWordsText(['murder', 'war crime'])), ['murder', 'war crime'], 'round-trips');
+
+// Matching is on whole words, over the headline and the excerpt.
+const story = (title, excerpt = '') => ({title, excerpt});
+assert.equal(blockedBy(story('A murder in Bangkok'), ['murder']), 'murder');
+assert.equal(blockedBy(story('Quiet day'), ['murder']), '');
+assert.equal(blockedBy(story('Quiet day', 'It ended in a murder.'), ['murder']), 'murder', 'the excerpt counts too');
+assert.equal(blockedBy(story('Murder, she wrote'), ['murder']), 'murder', 'punctuation does not hide a match');
+assert.equal(blockedBy(story('Scunthorpe classes resume'), ['ass', 'cunt']), '', 'whole words only');
+assert.equal(blockedBy(story('Burgundy in autumn'), ['gun']), '');
+assert.equal(blockedBy(story('A gun was found'), ['gun']), 'gun');
+assert.equal(blockedBy(story('Evidence of a war crime'), ['war crime']), 'war crime', 'a phrase matches as a phrase');
+assert.equal(blockedBy(story('A crime of war'), ['war crime']), '', 'the phrase is not matched out of order');
+assert.equal(blockedBy(story('Anything at all'), []), '', 'no list, nothing hidden');
+
+// Suggested sources all carry a label, and a Children filter leaves something
+// to read rather than an empty page.
+assert.ok(suggestedSites.every(s => isAudience(s.audience)), 'every suggestion says who it is written for');
+assert.ok(suggestedSites.some(s => s.audience === 'children'), 'a Children filter has something to keep');
+assert.ok(suggestedSites.filter(s => audienceAllows('teen', s.audience)).length >= 3);
+
+console.log('PASS: RSS and Atom parsing, site hostnames, topic matching, query packing, source list and defaults, audience labels and whole-word blocked-word matching, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');

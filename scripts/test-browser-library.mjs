@@ -66,6 +66,34 @@ lib.writeLibrary({action:'sites',sites:[{name:'Good feed',url:'https://example.c
 assert.equal(lib.readLibrary().sites[0].feedUrl,'https://example.com/rss');
 const oldBackup=JSON.parse(backup);delete oldBackup.sites;
 assert.deepEqual(lib.parseBackup(JSON.stringify(oldBackup)).sites,[]);
+
+// Reading filters. Off by default, so a library or a backup written before
+// they existed keeps behaving exactly as it did.
+assert.equal(lib.readLibrary().maxAudience,'general','the audience filter starts off');
+assert.deepEqual(lib.readLibrary().blockedWords,[]);
+assert.equal(lib.parseBackup(JSON.stringify(oldBackup)).maxAudience,'general','an older backup gains the default');
+assert.deepEqual(lib.parseBackup(JSON.stringify(oldBackup)).blockedWords,[]);
+assert.equal(lib.readLibrary().sites[0].audience,'general','a site saved without a label counts as General');
+lib.writeLibrary({action:'sites',sites:[{name:'Kids',url:'https://kids.example/',searchUrl:'',feedUrl:'https://kids.example/feed',audience:'children'}]});
+assert.equal(lib.readLibrary().sites[0].audience,'children','the label is kept');
+assert.throws(()=>lib.writeLibrary({action:'sites',sites:[{name:'Bad',url:'https://kids.example/',searchUrl:'',feedUrl:'',audience:'PG13'}]}),'a made-up rating is refused');
+lib.writeLibrary({action:'filters',maxAudience:'teen',blockedWords:['murder','WAR crime']});
+assert.equal(lib.readLibrary().maxAudience,'teen');
+assert.deepEqual(lib.readLibrary().blockedWords,['murder','war crime'],'terms are stored folded to lower case');
+assert.throws(()=>lib.writeLibrary({action:'filters',maxAudience:'R21',blockedWords:[]}));
+assert.throws(()=>lib.writeLibrary({action:'filters',maxAudience:'teen',blockedWords:Array.from({length:201},(_,i)=>'w'+i)}));
+// Both travel in a backup and come back, so a profile can be shared as one.
+const filtered=lib.parseBackup(lib.exportBackup(14));
+assert.equal(filtered.maxAudience,'teen');
+assert.deepEqual(filtered.blockedWords,['murder','war crime']);
+assert.equal(filtered.sites[0].audience,'children');
+lib.writeLibrary({action:'filters',maxAudience:'general',blockedWords:[]});
+lib.restoreBackup(filtered);
+assert.equal(lib.readLibrary().maxAudience,'teen','restoring brings the filters back');
+assert.deepEqual(lib.readLibrary().blockedWords,['murder','war crime']);
+assert.equal(lib.readLibrary().sites[0].audience,'children');
+lib.writeLibrary({action:'filters',maxAudience:'general',blockedWords:[]});
+lib.writeLibrary({action:'sites',sites:[{name:'Good feed',url:'https://example.com',searchUrl:'',feedUrl:'https://example.com/rss'}]});
 // The edition is cached per source selection so reopening the tab does not
 // trigger a fresh round of searches.
 const story={id:'https://example.com/n',url:'https://example.com/n',title:'Cached story',excerpt:'Body',source:'example.com',date:new Date().toISOString(),topic:'AI'};
@@ -107,4 +135,4 @@ lib.writeLibrary({action:'remove',id:article.id});
 assert.equal(lib.readLibrary().articles.length,0);
 globalThis.localStorage.setItem=()=>{throw Error('Storage full');};
 assert.throws(()=>lib.writeLibrary({action:'save',article}),/Storage full/);
-console.log('PASS: library operations, bounded feed cache, backup export, restore after cleared storage, invalid-file protection, unsafe URLs, and storage failures.');
+console.log('PASS: library operations, audience labels and blocked words defaulting off and surviving a backup, bounded feed cache, backup export, restore after cleared storage, invalid-file protection, unsafe URLs, and storage failures.');
