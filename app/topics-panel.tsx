@@ -18,13 +18,13 @@ export default function TopicsPanel({topics,onSave,onDone}:{topics:Topic[];onSav
   finally{setBusy(false);}
  }
  return <div className="settings-panel">
-  <DialogDescription>Name a topic and give it comma-separated keywords. A story matches a topic when it mentions any of them, and anything matching none still appears under All stories.</DialogDescription>
   <form onSubmit={submit}>
    <div className="panel-actions">
     <button type="button" className="secondary" disabled={draft.length>=20} onClick={()=>setDraft(old=>[...old,{name:'',keywords:''}])}><Plus size={16}/>New topic</button>
     <button className="primary" disabled={busy||!changed}>{busy?'Saving…':changed?'Save topics':'Saved'}</button>
     <span className="count">{draft.length} of 20 topics</span>
    </div>
+   <DialogDescription>Name a topic and give it comma-separated keywords. A story matches a topic when it mentions any of them, and anything matching none still appears under All stories.</DialogDescription>
    <div className="topic-editor">{draft.map((topic,index)=><div className="topic-edit" key={index}>
     <div>
      <label>Topic name<input required maxLength={40} value={topic.name} onChange={e=>setDraft(old=>old.map((x,i)=>i===index?{...x,name:e.target.value}:x))}/></label>

@@ -45,6 +45,8 @@ try{
  const topicActions=await page.locator('.settings-panel .panel-actions').boundingBox();
  const topicList=await page.locator('.topic-editor').boundingBox();
  assert.ok(topicActions.y<topicList.y,'New topic and Save sit above the list');
+ const topicHelp=await page.getByText('Name a topic and give it comma-separated keywords',{exact:false}).boundingBox();
+ assert.ok(topicActions.y<topicHelp.y&&topicHelp.y<topicList.y,'the explanation sits between the actions and the list');
  const editorBox=await page.locator('.topic-editor').evaluate(el=>getComputedStyle(el).maxHeight);
  assert.equal(editorBox,'none','the topic list is not a scrolling box');
  await page.getByRole('tab',{name:'Save settings',exact:true}).click();
