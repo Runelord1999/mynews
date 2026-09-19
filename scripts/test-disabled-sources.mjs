@@ -248,6 +248,8 @@ try{
   await page.getByLabel('Default settings set',{exact:true}).selectOption(preset);
   await page.getByRole('button',{name:'Load default Settings Set',exact:true}).click();
   await page.getByRole('heading',{name:'Apply these settings?',exact:true}).waitFor();
+  await page.getByRole('region',{name:'Reading filters preview'}).getByText('None — word filter off',{exact:true}).waitFor();
+  await page.getByRole('region',{name:'Keyword topics preview'}).getByText(preset==='adult'?'Trump':'Space and astronomy',{exact:true}).first().waitFor();
   // Cancelling leaves the currently saved edition untouched.
   const prior=await library();
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
@@ -266,6 +268,49 @@ try{
   await page.getByRole('button',{name:'Open settings',exact:true}).click();
   assert.deepEqual((await library()).topics,expected.topics);
  }
+ // File and online restores preview all settings, including nonempty filters.
+ const complete=JSON.parse(await readFile(new URL('../lib/presets/teenager.json',import.meta.url),'utf8'));
+ Object.assign(complete,{maxAudience:'teen',blockedWords:['murder','war crime'],onlySites:true,hideExcerpt:true,servicesCollapsed:true,settingsId:'complete-profile',settingsOwner:'Reader',fontSize:18});
+ complete.sites=complete.sites.map(s=>({...s,audience:'teen'}));
+ await page.getByRole('tab',{name:'Save settings',exact:true}).click();
+ await page.getByLabel('Choose a Mynews settings file').setInputFiles({name:'complete.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(complete))});
+ const filters=page.getByRole('region',{name:'Reading filters preview'});
+ await filters.getByText('Teen and below',{exact:true}).waitFor();
+ await filters.getByText('murder, war crime',{exact:true}).waitFor();
+ await page.getByRole('region',{name:'Display settings preview'}).getByText('Headlines only',{exact:true}).waitFor();
+ await page.getByRole('region',{name:'Source websites preview'}).getByText(complete.sites[0].feedUrl,{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Apply settings',exact:true}).click();
+ await page.locator('.paper.headlines-only').waitFor();
+ assert.equal(await page.locator('.paper').evaluate(el=>el.style.getPropertyValue('--reading-size')),'18px');
+ await page.getByRole('button',{name:/^Sources:/}).click();
+ assert.equal(await page.getByRole('menuitemcheckbox',{name:/^Only from my sites/}).getAttribute('aria-checked'),'true');
+ await page.getByRole('button',{name:'Expand news services',exact:true}).waitFor();
+ await page.keyboard.press('Escape');
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ await page.getByRole('tab',{name:'Save settings',exact:true}).click();
+ assert.equal(await page.getByLabel('Settings ID',{exact:true}).inputValue(),'complete-profile');
+ assert.equal(await page.getByLabel('Settings ID Owner Name',{exact:true}).inputValue(),'Reader');
+ await page.evaluate(()=>{window.showSaveFilePicker=undefined;});
+ const pendingDownload=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Save to a file',exact:true}).click();
+ const download=await pendingDownload;
+ const fileBackup=JSON.parse(await readFile(await download.path(),'utf8'));
+ for(const field of ['topics','sites','sources','removedSources','maxAudience','blockedWords','onlySites','hideExcerpt','servicesCollapsed','settingsId','settingsOwner','fontSize'])assert.deepEqual(fileBackup[field],complete[field],'file backup: '+field);
+ let onlineBackup;
+ await page.route('**/api/settings',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action==='save'){onlineBackup=body.backup;await route.fulfill({json:{owner:'Reader',saveCount:1}});}
+  else await route.fulfill({json:{owner:'Reader',backup:onlineBackup}});
+ });
+ await page.getByRole('button',{name:'Save online',exact:true}).click();
+ await page.getByRole('status').filter({hasText:'Saved online under complete-profile'}).waitFor();
+ for(const field of ['topics','sites','sources','removedSources','maxAudience','blockedWords','onlySites','hideExcerpt','servicesCollapsed','settingsId','settingsOwner','fontSize'])assert.deepEqual(onlineBackup[field],fileBackup[field],'online matches local: '+field);
+ await page.getByRole('button',{name:'Restore from online',exact:true}).click();
+ await filters.getByText('murder, war crime',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Apply settings',exact:true}).click();
+ await page.reload();await page.locator('.paper.headlines-only').waitFor();
+ assert.deepEqual((await library()).blockedWords,['murder','war crime']);
+ console.log('PASS: detailed preview, local and online complete settings backup, immediate display restore, and reload.');
  console.log('PASS: bulk deletion confirmation and persistence; Adult and Teenager presets match supplied files and survive reload.');
  console.log('PASS: settings dialog holds the four sections, audience labels drop whole sources and blocked words hide stories without refetching, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

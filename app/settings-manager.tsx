@@ -28,13 +28,13 @@ export default function SettingsManager({fontSize,ready,onApply,onDone,onClearTo
    const token=normaliseId(id);
    if(!validId(token))throw Error('Settings IDs are 3 to 40 characters using letters, numbers, hyphens and underscores.');
    if(action==='save'&&!validOwner(owner))throw Error('Add an owner name of 2 to 60 characters so you can tell later who created this ID.');
-   const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:token,...(action==='save'?{owner:normaliseOwner(owner),overwrite,backup:JSON.parse(exportBackup(fontSize))}:{})}),signal:AbortSignal.timeout(20000)});
+   const response=await fetch(settingsEndpoint(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:token,...(action==='save'?{owner:normaliseOwner(owner),overwrite,backup:JSON.parse(exportBackup(fontSize,{settingsId:normaliseId(id),settingsOwner:normaliseOwner(owner)}))}:{})}),signal:AbortSignal.timeout(20000)});
    const data=await response.json() as {error?:string;backup?:unknown;owner?:string;saveCount?:number;conflict?:boolean;existing?:{id:string;owner:string;updatedAt:string}};
    if(response.status===409&&data.conflict&&data.existing){setConflict(data.existing);setBusy(false);return;}
    if(!response.ok)throw Error((data.error||'Could not reach online settings.')+' ('+response.status+' from '+apiOrigin()+')');
    setId(token);remember(token,data.owner||'');
    if(data.owner)setOwner(data.owner);
-   if(action==='apply'){const backup=parseBackup(JSON.stringify(data.backup));onDone();onApply(backup);}
+   if(action==='apply'){const backup=parseBackup(JSON.stringify(data.backup));backup.settingsId=token;backup.settingsOwner=data.owner||'';onDone();onApply(backup);}
    else note('Saved online under '+token+(data.saveCount&&data.saveCount>1?' (version '+data.saveCount+')':'')+', owned by '+(data.owner||normaliseOwner(owner))+'. Share this ID with anyone you want to give these settings to.','ok');
   }catch(error){note((error instanceof Error?error.message:'Could not reach online settings.')+(error instanceof Error&&!error.message.includes(apiOrigin())?' (no reply from '+apiOrigin()+')':''),'error');}finally{setBusy(false);}
  }
@@ -45,7 +45,7 @@ export default function SettingsManager({fontSize,ready,onApply,onDone,onClearTo
  async function saveToFile(){
   let text,suggested;
   try{
-   text=exportBackup(fontSize);
+   text=exportBackup(fontSize,{settingsId:normaliseId(id),settingsOwner:normaliseOwner(owner)});
    const fileId=normaliseId(id).replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
    suggested='mynews-settings-'+(fileId?fileId+'-':'')+new Date().toISOString().slice(0,10)+'.json';
   }catch{note('Could not build a settings file. Check browser storage and try again.','error');return;}
@@ -83,7 +83,7 @@ export default function SettingsManager({fontSize,ready,onApply,onDone,onClearTo
  }
 
  return <div className="settings-panel">
-  <DialogDescription>Keep your topics, source sites, reading list and text size. Save online to reach them from another browser, or to a file on this device.</DialogDescription>
+  <DialogDescription>Keep your topics, sources, reading filters, blocked words, reading list and display preferences. Save online to reach them from another browser, or to a file on this device.</DialogDescription>
 
   <div className="settings-id-row">
    <label>Settings ID<input value={id} onChange={e=>{setId(e.target.value);clearNote();}} autoComplete="off" spellCheck={false} maxLength={40} placeholder="Create an ID or type one to apply" disabled={busy}/></label>

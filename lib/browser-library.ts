@@ -10,7 +10,7 @@ const siteSchema=z.object({name:z.string().trim().min(1).max(60),url:z.string().
  .refine(s=>!s.searchUrl||(s.searchUrl.includes('{query}')&&new URL(safeUrl(s.searchUrl.replaceAll('{query}','test'))).hostname===new URL(s.url).hostname),'Search URL must use this website and include {query}.')
  .refine(s=>!s.feedUrl||Boolean(safeUrl(s.feedUrl)),'Enter a valid feed address.');
 const librarySchema=z.object({topics:z.array(topicSchema).max(20),articles:z.array(articleSchema),sites:z.array(siteSchema).max(30).default([]),starterSitesVersion:z.number().optional(),removedSources:z.array(z.string().max(4200)).max(100).default([]),maxAudience:audienceSchema.default('general'),blockedWords:z.array(z.string().trim().toLowerCase().min(1).max(40)).max(200).default([])});
-const backupSchema=librarySchema.extend({format:z.literal('mynews-settings'),version:z.literal(1),exportedAt:z.string(),fontSize:z.number().int().min(12).max(24),sources:z.array(z.string().max(4200)).max(100).optional()});
+const backupSchema=librarySchema.extend({format:z.literal('mynews-settings'),version:z.literal(1),exportedAt:z.string(),fontSize:z.number().int().min(12).max(24),sources:z.array(z.string().max(4200)).max(100).optional(),onlySites:z.boolean().default(false),hideExcerpt:z.boolean().default(false),servicesCollapsed:z.boolean().default(false),settingsId:z.string().max(40).optional(),settingsOwner:z.string().max(60).optional()});
 export type SettingsBackup=z.infer<typeof backupSchema>;
 export function parseBackup(text:string):SettingsBackup {
  if(new Blob([text]).size>5*1024*1024)throw Error('Choose a settings file smaller than 5 MB.');
@@ -19,15 +19,21 @@ export function parseBackup(text:string):SettingsBackup {
  backup.articles=Array.from(new Map(backup.articles.map(a=>[a.url,{...a,id:a.url}])).values());
  return backup;
 }
-export function exportBackup(fontSize:number):string {
+export function exportBackup(fontSize:number,identity?:{settingsId:string;settingsOwner:string}):string {
  const state=readLibrary();
- return JSON.stringify(parseBackup(JSON.stringify({format:'mynews-settings',version:1,exportedAt:new Date().toISOString(),fontSize,...state,sources:readSourceSelection(state)})),null,2);
+ return JSON.stringify(parseBackup(JSON.stringify({format:'mynews-settings',version:1,exportedAt:new Date().toISOString(),fontSize,...state,sources:readSourceSelection(state),onlySites:localStorage.getItem('mynews-only-sites')==='true',hideExcerpt:localStorage.getItem('mynews-hide-excerpt')==='true',servicesCollapsed:localStorage.getItem('mynews-collapsed-services')==='true',settingsId:localStorage.getItem('mynews-settings-id')||'',settingsOwner:localStorage.getItem('mynews-settings-owner')||'',...identity})),null,2);
 }
 export function restoreBackup(backup:SettingsBackup) {
  const valid=parseBackup(JSON.stringify(backup));
  localStorage.setItem(key,JSON.stringify({topics:valid.topics,articles:valid.articles,sites:valid.sites,removedSources:valid.removedSources,maxAudience:valid.maxAudience,blockedWords:valid.blockedWords,starterSitesVersion}));
  valid.sources=readSourceSelection(valid,valid.sources??allSources(valid.sites,valid.removedSources).map(s=>s.id));
  localStorage.setItem('mynews-sources',JSON.stringify(valid.sources));
+ localStorage.setItem('mynews-only-sites',String(valid.onlySites));
+ localStorage.setItem('mynews-hide-excerpt',String(valid.hideExcerpt));
+ localStorage.setItem('mynews-collapsed-services',String(valid.servicesCollapsed));
+ localStorage.setItem('mynews-font-size',String(valid.fontSize));
+ if(valid.settingsId!==undefined)localStorage.setItem('mynews-settings-id',valid.settingsId);
+ if(valid.settingsOwner!==undefined)localStorage.setItem('mynews-settings-owner',valid.settingsOwner);
  return valid;
 }
 export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[];removedSources:string[];maxAudience:Audience;blockedWords:string[]}{

@@ -310,4 +310,11 @@ assert.equal((await settings({action:'save',id:'empty-settings',owner:'Test',bac
 assert.deepEqual((await (await settings({action:'apply',id:'empty-settings'})).json()).backup.topics,[]);
 await settings({action:'delete',id:'empty-settings'});
 
+// Online storage retains the same complete settings shape as a downloaded file.
+const complete={...backup,maxAudience:'teen',blockedWords:['murder','war crime'],onlySites:true,hideExcerpt:true,servicesCollapsed:true,settingsId:'complete-settings',settingsOwner:'Reader',sites:[{...backup.sites[0],audience:'teen'}]};
+assert.equal((await settings({action:'save',id:'complete-settings',owner:'Reader',backup:complete})).status,200);
+const loaded=(await (await settings({action:'apply',id:'complete-settings'})).json()).backup;
+for(const field of Object.keys(complete))assert.deepEqual(loaded[field],complete[field],'online round trip: '+field);
+await settings({action:'delete',id:'complete-settings'});
+
 console.log('PASS: routing, CORS, feed discovery, grouped site queries, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

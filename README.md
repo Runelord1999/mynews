@@ -51,12 +51,16 @@ Comma-separated keywords are combined with OR. **Stories are fetched only when y
 
 ## Reading layout
 
-The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. **Hide excerpt**, beside Refresh news, drops the body text from every card and leaves the headline and its source line, so the cards collapse to a fraction of their height and far more of them fit on screen. Press it again to bring the text back. The choice is remembered in this browser, alongside the collapsed-section states, rather than travelling in a settings backup. Read more is hidden while excerpts are, since there is nothing on the card for it to expand into.
+The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. **Hide excerpt**, beside Refresh news, drops the body text from every card and leaves the headline and its source line, so the cards collapse to a fraction of their height and far more of them fit on screen. Press it again to bring the text back. The choice is remembered in this browser and travels in settings backups, alongside the service-section collapse preference. Read more is hidden while excerpts are, since there is nothing on the card for it to expand into.
 
 An info icon beside Reset says what it touches: the text size only, back to 16px. Topics, source sites, the reading list, the saved Settings ID and the stored headlines are unaffected. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. Keyword Topics, Source sites and Save settings are pages of one **Settings** dialog, reached from the button in the masthead, so the page above the stories shows news rather than its own configuration. Each page leads with its actions and flows into the dialog's own scrollbar rather than scrolling inside a box.
 
 
 ## Settings backup
+
+Before applying a default preset, local file or online backup, the reader shows the full settings preview: topic keywords, service selections, saved websites and their feed/search URLs and audience labels, reading filters and blocked words, display preferences, identity fields, and saved articles. Empty filters are explicitly shown as off.
+
+Local and online backups use the same format. They include source selections/removals, audience and blocked-word filters, Only from my sites, headline-only view, service-section collapse preference, text size, Settings ID and owner, as well as topics, websites and the reading list. Restoring applies the preferences immediately. Older files remain readable; missing display preferences take their defaults, while a missing ID or owner leaves the current value unchanged.
 
 One **Save Settings** button in the masthead opens a dialog that both saves and restores, offering the same two destinations for each.
 
