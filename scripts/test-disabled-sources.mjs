@@ -65,6 +65,14 @@ try{
  await page.getByLabel('Website URL',{exact:true}).fill('https://personal.example/');
  await page.getByRole('button',{name:'Add site',exact:true}).click();
  assert.equal(await page.getByLabel('Website name',{exact:true}).count(),0,'Successful add hides form');
+ // The saved websites heading summarises use, and the bulk feed lookup only
+ // appears while some website still has no feed.
+ await page.getByText('1 of 1 in use',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Find feeds for all',exact:true}).count(),1,'offered while a website has no feed');
+ await page.evaluate(()=>{const k='mynews-library-v1';const s=JSON.parse(localStorage.getItem(k));s.sites=s.sites.map(x=>({...x,feedUrl:'https://personal.example/feed'}));localStorage.setItem(k,JSON.stringify(s));});
+ await page.reload();
+ await page.getByRole('button',{name:/^All sites /}).click();
+ assert.equal(await page.getByRole('button',{name:'Find feeds for all',exact:true}).count(),0,'hidden once every website has a feed');
  // Saved websites must not scroll inside a box of their own, so a long list
  // can be reached by scrolling the dialog.
  const savedBox=await page.locator('.saved-sites').evaluate(el=>{const s=getComputedStyle(el);return {maxHeight:s.maxHeight,overflowY:s.overflowY,scrolls:el.scrollHeight>el.clientHeight+1};});
