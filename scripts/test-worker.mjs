@@ -304,4 +304,10 @@ assert.equal((await settings({action: 'apply', id: 'gfm-markets'})).status, 404)
 assert.equal((await settings({action: 'delete', id: 'team-desk'})).status, 200);
 assert.equal(count(), 0);
 
+// A browser with all topics and sources deleted can still save online.
+const cleared={...backup,topics:[],sites:[],sources:[]};
+assert.equal((await settings({action:'save',id:'empty-settings',owner:'Test',backup:cleared})).status,200);
+assert.deepEqual((await (await settings({action:'apply',id:'empty-settings'})).json()).backup.topics,[]);
+await settings({action:'delete',id:'empty-settings'});
+
 console.log('PASS: routing, CORS, feed discovery, grouped site queries, overwrite confirmation, site feeds and on-demand article reads with SSRF guards and caching, shareable IDs, owner names, sharing and overwrite, no visitor data stored, optional admin key, list/rename/delete.');

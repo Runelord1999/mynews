@@ -1,7 +1,7 @@
 import {defaults, safeUrl, type Article, type Topic, type NewsSite, type Audience} from './news';
 import {z} from 'zod';
 import {starterSites, starterSitesVersion} from './starter-sites';
-import {serviceHosts,allSources,defaultSources} from './news';
+import {serviceHosts,allSources,defaultSources,services} from './news';
 const key = 'mynews-library-v1';
 const topicSchema=z.object({name:z.string().trim().min(1).max(40),keywords:z.string().trim().min(1).max(300)});
 const articleSchema=z.object({id:z.string(),url:z.string().transform(safeUrl),title:z.string().trim().min(1).max(500),excerpt:z.string().max(1000),source:z.string().max(200),date:z.string().max(100),topic:z.string().max(40)});
@@ -9,7 +9,7 @@ const audienceSchema=z.enum(['children','teen','general']);
 const siteSchema=z.object({name:z.string().trim().min(1).max(60),url:z.string().max(4096).transform(safeUrl),searchUrl:z.string().max(4096).default(''),feedUrl:z.string().max(4096).default(''),audience:audienceSchema.default('general')})
  .refine(s=>!s.searchUrl||(s.searchUrl.includes('{query}')&&new URL(safeUrl(s.searchUrl.replaceAll('{query}','test'))).hostname===new URL(s.url).hostname),'Search URL must use this website and include {query}.')
  .refine(s=>!s.feedUrl||Boolean(safeUrl(s.feedUrl)),'Enter a valid feed address.');
-const librarySchema=z.object({topics:z.array(topicSchema).min(1).max(20),articles:z.array(articleSchema),sites:z.array(siteSchema).max(30).default([]),starterSitesVersion:z.number().optional(),removedSources:z.array(z.string().max(4200)).max(100).default([]),maxAudience:audienceSchema.default('general'),blockedWords:z.array(z.string().trim().toLowerCase().min(1).max(40)).max(200).default([])});
+const librarySchema=z.object({topics:z.array(topicSchema).max(20),articles:z.array(articleSchema),sites:z.array(siteSchema).max(30).default([]),starterSitesVersion:z.number().optional(),removedSources:z.array(z.string().max(4200)).max(100).default([]),maxAudience:audienceSchema.default('general'),blockedWords:z.array(z.string().trim().toLowerCase().min(1).max(40)).max(200).default([])});
 const backupSchema=librarySchema.extend({format:z.literal('mynews-settings'),version:z.literal(1),exportedAt:z.string(),fontSize:z.number().int().min(12).max(24),sources:z.array(z.string().max(4200)).max(100).optional()});
 export type SettingsBackup=z.infer<typeof backupSchema>;
 export function parseBackup(text:string):SettingsBackup {
@@ -51,13 +51,15 @@ export function readLibrary():{topics:Topic[];articles:Article[];sites:NewsSite[
  return state;
 }
 export function writeLibrary(input:unknown){const b=z.discriminatedUnion('action',[
- z.object({action:z.literal('topics'),topics:z.array(topicSchema).min(1).max(20)}),
+ z.object({action:z.literal('clearSources')}),
+ z.object({action:z.literal('topics'),topics:z.array(topicSchema).max(20)}),
  z.object({action:z.literal('save'),article:articleSchema}),
  z.object({action:z.literal('remove'),id:z.string()}),
  z.object({action:z.literal('removedSources'),removedSources:z.array(z.string().max(4200)).max(100)}),
  z.object({action:z.literal('sites'),sites:z.array(siteSchema).max(30)}),
  z.object({action:z.literal('filters'),maxAudience:audienceSchema,blockedWords:z.array(z.string().trim().toLowerCase().min(1).max(40)).max(200)})
 ]).parse(input);const state=readLibrary();
+ if(b.action==='clearSources'){state.sites=[];state.removedSources=services.map(s=>s.id);}
  if(b.action==='removedSources')state.removedSources=b.removedSources;
  if(b.action==='filters'){state.maxAudience=b.maxAudience;state.blockedWords=b.blockedWords;}
  if(b.action==='sites'){state.sites=b.sites;}

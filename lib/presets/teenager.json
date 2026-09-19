@@ -1,0 +1,225 @@
+{
+  "topics": [
+    {
+      "name": "Space and astronomy",
+      "keywords": "Moon missions, Mars exploration, space stations, black holes, exoplanets, James Webb telescope"
+    },
+    {
+      "name": "Robots",
+      "keywords": "humanoid robots, rescue robots, robotics competitions"
+    },
+    {
+      "name": "Artificial intelligence",
+      "keywords": "AI inventions, AI in education, how AI works"
+    },
+    {
+      "name": "Coding and DIY technology",
+      "keywords": "Python projects, teen coding, app development, Raspberry Pi projects, micro:bit projects, 3D printing"
+    },
+    {
+      "name": "Game design and Minecraft",
+      "keywords": "game design, game development, Minecraft Education, Minecraft builds, redstone engineering, Minecraft architecture"
+    },
+    {
+      "name": "Inventions and future transport",
+      "keywords": "young inventors, student inventions, engineering breakthroughs, electric aircraft, high speed trains, future transport"
+    },
+    {
+      "name": "Wildlife discoveries",
+      "keywords": "new animal species, animal intelligence, wildlife conservation"
+    },
+    {
+      "name": "Dinosaurs and fossils",
+      "keywords": "dinosaur discoveries, prehistoric animals, fossil discoveries"
+    },
+    {
+      "name": "Oceans",
+      "keywords": "deep sea exploration, coral reefs, marine biology"
+    },
+    {
+      "name": "Climate solutions",
+      "keywords": "clean energy inventions, ocean cleanup, climate solutions"
+    },
+    {
+      "name": "Everyday science",
+      "keywords": "everyday physics, food science, science experiments"
+    },
+    {
+      "name": "The brain and learning",
+      "keywords": "how memory works, learning science, brain discoveries"
+    },
+    {
+      "name": "Sports science",
+      "keywords": "sports technology, biomechanics, athletic performance"
+    },
+    {
+      "name": "Football and basketball",
+      "keywords": "youth football, football tactics, football technology, basketball skills, basketball science, youth basketball"
+    },
+    {
+      "name": "Music and sound",
+      "keywords": "music technology, film music, how instruments work"
+    },
+    {
+      "name": "Animation and digital art",
+      "keywords": "animation techniques, stop motion, digital art"
+    },
+    {
+      "name": "History and archaeology",
+      "keywords": "archaeological discoveries, ancient civilizations, historical mysteries"
+    },
+    {
+      "name": "Money skills",
+      "keywords": "budgeting for teens, saving money, young entrepreneurs"
+    },
+    {
+      "name": "Digital literacy",
+      "keywords": "spotting misinformation, deepfake detection, online scams"
+    },
+    {
+      "name": "Young changemakers",
+      "keywords": "teen inventors, youth volunteers, student environmental projects"
+    }
+  ],
+  "articles": [],
+  "sites": [
+    {
+      "name": "Science News Explores",
+      "url": "https://www.snexplores.org/",
+      "searchUrl": "",
+      "feedUrl": "https://www.snexplores.org/feed/",
+      "audience": "general"
+    },
+    {
+      "name": "NASA Students",
+      "url": "https://www.nasa.gov/learning-resources/for-kids-and-students/",
+      "searchUrl": "",
+      "feedUrl": "https://www.nasa.gov/feed/",
+      "audience": "general"
+    },
+    {
+      "name": "Raspberry Pi Foundation",
+      "url": "https://www.raspberrypi.org/learn",
+      "searchUrl": "",
+      "feedUrl": "https://www.raspberrypi.org/feed/",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Space & Time",
+      "url": "https://www.sciencedaily.com/news/space_time/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/space_time.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Dinosaurs",
+      "url": "https://www.sciencedaily.com/news/fossils_ruins/dinosaurs/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/fossils_ruins/dinosaurs.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Ancient Civilisations",
+      "url": "https://www.sciencedaily.com/news/fossils_ruins/ancient_civilizations/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/fossils_ruins/ancient_civilizations.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Artificial Intelligence",
+      "url": "https://www.sciencedaily.com/news/computers_math/artificial_intelligence/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Robotics",
+      "url": "https://www.sciencedaily.com/news/matter_energy/robotics/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/matter_energy/robotics.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Mind & Brain",
+      "url": "https://www.sciencedaily.com/news/mind_brain/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/mind_brain.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Plants & Animals",
+      "url": "https://www.sciencedaily.com/news/plants_animals/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/plants_animals.xml",
+      "audience": "general"
+    },
+    {
+      "name": "ScienceDaily — Earth & Climate",
+      "url": "https://www.sciencedaily.com/news/earth_climate/",
+      "searchUrl": "",
+      "feedUrl": "https://www.sciencedaily.com/rss/earth_climate.xml",
+      "audience": "general"
+    },
+    {
+      "name": "Live Science",
+      "url": "https://www.livescience.com/",
+      "searchUrl": "",
+      "feedUrl": "https://www.livescience.com/feeds/all",
+      "audience": "general"
+    },
+    {
+      "name": "MIT News",
+      "url": "https://news.mit.edu/",
+      "searchUrl": "",
+      "feedUrl": "https://news.mit.edu/rss/feed",
+      "audience": "general"
+    },
+    {
+      "name": "Make: Magazine",
+      "url": "https://makezine.com/",
+      "searchUrl": "",
+      "feedUrl": "https://makezine.com/feed/",
+      "audience": "general"
+    },
+    {
+      "name": "ESA — Space Science",
+      "url": "https://www.esa.int/Science_Exploration",
+      "searchUrl": "",
+      "feedUrl": "https://www.esa.int/rssfeed/Our_Activities/Space_Science",
+      "audience": "general"
+    },
+    {
+      "name": "Smithsonian Magazine",
+      "url": "https://www.smithsonianmag.com/",
+      "searchUrl": "",
+      "feedUrl": "https://www.smithsonianmag.com/rss/latest_articles/",
+      "audience": "general"
+    }
+  ],
+  "starterSitesVersion": 4,
+  "removedSources": [],
+  "maxAudience": "general",
+  "blockedWords": [],
+  "format": "mynews-settings",
+  "version": 1,
+  "exportedAt": "2026-09-19T10:03:57.396Z",
+  "fontSize": 16,
+  "sources": [
+    "site:https://www.nasa.gov/learning-resources/for-kids-and-students/",
+    "site:https://www.raspberrypi.org/learn",
+    "site:https://www.sciencedaily.com/news/space_time/",
+    "site:https://www.sciencedaily.com/news/fossils_ruins/dinosaurs/",
+    "site:https://www.sciencedaily.com/news/fossils_ruins/ancient_civilizations/",
+    "site:https://www.sciencedaily.com/news/computers_math/artificial_intelligence/",
+    "site:https://www.sciencedaily.com/news/matter_energy/robotics/",
+    "site:https://www.sciencedaily.com/news/mind_brain/",
+    "site:https://www.sciencedaily.com/news/plants_animals/",
+    "site:https://www.sciencedaily.com/news/earth_climate/",
+    "site:https://www.livescience.com/",
+    "site:https://news.mit.edu/",
+    "site:https://makezine.com/",
+    "site:https://www.esa.int/Science_Exploration",
+    "site:https://www.smithsonianmag.com/",
+    "site:https://www.snexplores.org/"
+  ]
+}

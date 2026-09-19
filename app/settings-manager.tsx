@@ -1,17 +1,22 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useRef,useState} from 'react';
 import {DialogDescription} from '@/components/ui/dialog';
 import {exportBackup,parseBackup,settingsEndpoint,apiOrigin,type SettingsBackup} from '@/lib/browser-library';
+import adultPreset from '@/lib/presets/adult.json';
+import teenagerPreset from '@/lib/presets/teenager.json';
 import {normaliseId,normaliseOwner,suggestId,validId,validOwner} from '@/lib/settings-id';
 
 // One place to save and restore, with the same two destinations offered for
 // each: the server, under a shared Settings ID, or a file on this device.
-export default function SettingsManager({fontSize,ready,onApply,onDone}:{fontSize:number;ready:boolean;onApply:(backup:SettingsBackup)=>void;onDone:()=>void}){
- const [id,setId]=useState(''),[owner,setOwner]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[tone,setTone]=useState<'ok'|'error'|''>('');
+export default function SettingsManager({fontSize,ready,onApply,onDone,onClearTopics,onClearSources}:{onClearTopics:()=>Promise<void>|void;onClearSources:()=>Promise<void>|void;fontSize:number;ready:boolean;onApply:(backup:SettingsBackup)=>void;onDone:()=>void}){
+ const [id,setId]=useState(()=>{try{return localStorage.getItem('mynews-settings-id')||'';}catch{return '';}}),[owner,setOwner]=useState(()=>{try{return localStorage.getItem('mynews-settings-owner')||'';}catch{return '';}}),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[tone,setTone]=useState<'ok'|'error'|''>('');
  // Set when a save is refused because the ID already holds someone's settings.
  const [conflict,setConflict]=useState<{id:string;owner:string;updatedAt:string}|null>(null);
+ const [clearAction,setClearAction]=useState<'topics'|'sources'|null>(null);
+ const [preset,setPreset]=useState<'adult'|'teenager'>('adult');
+ async function confirmClear(){if(!clearAction)return;setBusy(true);try{if(clearAction==='topics')await onClearTopics();else await onClearSources();note(clearAction==='topics'?'All keyword topics deleted from this browser.':'All source sites deleted from this browser.','ok');setClearAction(null);}catch{note('Could not save the change. Check browser storage and try again.','error');}finally{setBusy(false);}}
+ function loadPreset(){try{const backup=parseBackup(JSON.stringify(preset==='adult'?adultPreset:teenagerPreset));onDone();onApply(backup);}catch{note('This default settings set could not be read.','error');}}
  const fileInput=useRef<HTMLInputElement>(null);
- useEffect(()=>{try{setId(localStorage.getItem('mynews-settings-id')||'');setOwner(localStorage.getItem('mynews-settings-owner')||'');}catch{}},[]);
  function note(text:string,kind:'ok'|'error'){setMessage(text);setTone(kind);}
  function clearNote(){setMessage('');setTone('');setConflict(null);}
  function remember(token:string,who:string){try{localStorage.setItem('mynews-settings-id',token);if(who)localStorage.setItem('mynews-settings-owner',who);}catch{}}
@@ -107,6 +112,22 @@ export default function SettingsManager({fontSize,ready,onApply,onDone}:{fontSiz
    <input ref={fileInput} type="file" accept=".json,application/json" aria-label="Choose a Mynews settings file" hidden onChange={fileChosen}/>
   </div>
 
+  <div className="settings-choice">
+   <h3 className="site-form-title">Manage this browser’s settings</h3>
+   <div className="form-actions">
+    <button className="secondary" disabled={busy||!ready} onClick={()=>{clearNote();setClearAction('topics');}}>Delete All keyword Topics</button>
+    <button className="secondary" disabled={busy||!ready} onClick={()=>{clearNote();setClearAction('sources');}}>Delete all Source Sites</button>
+   </div>
+   <div className="preset-actions">
+    <label>Default settings set<select aria-label="Default settings set" value={preset} onChange={e=>setPreset(e.target.value as 'adult'|'teenager')} disabled={busy}><option value="adult">Adult</option><option value="teenager">Teenager</option></select></label>
+    <button className="secondary" disabled={busy||!ready} onClick={loadPreset}>Load default Settings Set</button>
+   </div>
+   <p className="sites-help">Loads the supplied Adult or Teenager settings file, including its topics, sources, reading filters and text size. You can review before applying.</p>
+  </div>
+  {clearAction&&<div className="settings-confirm" role="alertdialog" aria-label={clearAction==='topics'?'Delete all keyword topics?':'Delete all source sites?'}>
+   <p>{clearAction==='topics'?'Delete every keyword topic from this browser? Your source sites and reading list will stay.':'Delete every saved website and remove all default news services from this browser? Your topics and reading list will stay.'} Saved files and online settings are unchanged.</p>
+   <div className="form-actions"><button className="secondary" disabled={busy} onClick={()=>setClearAction(null)}>Cancel</button><button className="primary" disabled={busy} onClick={confirmClear}>{busy?'Deleting…':'Confirm delete'}</button></div>
+  </div>}
   {conflict&&<div className="settings-confirm" role="alertdialog" aria-label="Replace saved settings"><p><strong>{conflict.id}</strong> already holds settings saved by <strong>{conflict.owner}</strong> on {new Intl.DateTimeFormat('en-SG',{dateStyle:'medium',timeStyle:'short'}).format(new Date(conflict.updatedAt))}. Replacing them cannot be undone.</p><div className="form-actions"><button className="secondary" disabled={busy} onClick={()=>setConflict(null)}>Cancel</button><button className="primary" disabled={busy} onClick={()=>online('save',true)}>{busy?'Replacing…':'Replace them'}</button></div></div>}{message&&<p role="status" className={tone==='error'?'settings-error':'settings-ok'}>{message}</p>}
  
  </div>;

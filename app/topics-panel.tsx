@@ -25,12 +25,12 @@ export default function TopicsPanel({topics,onSave,onDone}:{topics:Topic[];onSav
     <span className="count">{draft.length} of 20 topics</span>
    </div>
    <DialogDescription>Name a topic and give it comma-separated keywords. A story matches a topic when it mentions any of them, and anything matching none still appears under All stories.</DialogDescription>
-   <div className="topic-editor">{draft.map((topic,index)=><div className="topic-edit" key={index}>
+   {draft.length===0&&<p className="sites-help">No keyword topics. Add a new topic or load a default settings set under Save settings.</p>}<div className="topic-editor">{draft.map((topic,index)=><div className="topic-edit" key={index}>
     <div>
      <label>Topic name<input required maxLength={40} value={topic.name} onChange={e=>setDraft(old=>old.map((x,i)=>i===index?{...x,name:e.target.value}:x))}/></label>
      <label>Keywords<input required maxLength={300} value={topic.keywords} onChange={e=>setDraft(old=>old.map((x,i)=>i===index?{...x,keywords:e.target.value}:x))}/></label>
     </div>
-    <button type="button" aria-label={'Remove topic '+(topic.name||'without a name')} disabled={draft.length===1} onClick={()=>setDraft(old=>old.filter((_,i)=>i!==index))}><Trash2 size={17}/></button>
+    <button type="button" aria-label={'Remove topic '+(topic.name||'without a name')} onClick={()=>setDraft(old=>old.filter((_,i)=>i!==index))}><Trash2 size={17}/></button>
    </div>)}</div>
    <p className="sites-help">Removing a topic does not remove anything already saved to your reading list.</p>
   </form>

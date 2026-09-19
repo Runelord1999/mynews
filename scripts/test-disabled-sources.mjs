@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.MYNEWS_PLAYWRIGHT_MODULE||'playwright-core');
 // Use whatever Chromium this machine already has rather than downloading one:
 // an explicit path, the build Playwright installed, or the Chrome or Edge that
@@ -220,5 +221,51 @@ try{
  assert.equal(await page.locator('.saved-site-row').count(),now,'cancel adds nothing');
  await page.getByText(/^\d+ of \d+ in use$/).first().waitFor();
 
+ // Bulk actions are scoped to this browser, require confirmation, and persist.
+ await page.getByRole('tab',{name:'Save settings',exact:true}).click();
+ const library=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-library-v1')));
+ const beforeClear=await library();
+ await page.getByRole('button',{name:'Delete All keyword Topics',exact:true}).click();
+ await page.getByRole('alertdialog',{name:'Delete all keyword topics?'}).getByRole('button',{name:'Cancel',exact:true}).click();
+ assert.deepEqual((await library()).topics,beforeClear.topics);
+ await page.getByRole('button',{name:'Delete All keyword Topics',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm delete',exact:true}).click();
+ assert.deepEqual((await library()).topics,[]);
+ assert.deepEqual((await library()).sites,beforeClear.sites);
+ await page.getByRole('button',{name:'Delete all Source Sites',exact:true}).click();
+ await page.getByRole('alertdialog',{name:'Delete all source sites?'}).getByRole('button',{name:'Cancel',exact:true}).click();
+ assert.deepEqual((await library()).sites,beforeClear.sites);
+ await page.getByRole('button',{name:'Delete all Source Sites',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm delete',exact:true}).click();
+ await page.reload();
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();
+ assert.deepEqual((await library()).topics,[]);
+ assert.deepEqual((await library()).sites,[]);
+ assert.equal((await library()).removedSources.length,12);
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources'))),[]);
+ for(const preset of ['adult','teenager']){
+  await page.getByRole('tab',{name:'Save settings',exact:true}).click();
+  await page.getByLabel('Default settings set',{exact:true}).selectOption(preset);
+  await page.getByRole('button',{name:'Load default Settings Set',exact:true}).click();
+  await page.getByRole('heading',{name:'Apply these settings?',exact:true}).waitFor();
+  // Cancelling leaves the currently saved edition untouched.
+  const prior=await library();
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  assert.deepEqual(await library(),prior);
+  await page.getByRole('button',{name:'Open settings',exact:true}).click();
+  await page.getByRole('tab',{name:'Save settings',exact:true}).click();
+  await page.getByLabel('Default settings set',{exact:true}).selectOption(preset);
+  await page.getByRole('button',{name:'Load default Settings Set',exact:true}).click();
+  await page.getByRole('button',{name:'Apply settings',exact:true}).click();
+  const expected=JSON.parse(await readFile(new URL('../lib/presets/'+preset+'.json',import.meta.url),'utf8'));
+  const actual=await library();
+  for(const field of ['topics','sites','articles','removedSources','maxAudience','blockedWords'])assert.deepEqual(actual[field],expected[field],preset+' '+field);
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources'))),expected.sources);
+  assert.equal(await page.evaluate(()=>Number(localStorage.getItem('mynews-font-size'))),expected.fontSize);
+  await page.reload();
+  await page.getByRole('button',{name:'Open settings',exact:true}).click();
+  assert.deepEqual((await library()).topics,expected.topics);
+ }
+ console.log('PASS: bulk deletion confirmation and persistence; Adult and Teenager presets match supplied files and survive reload.');
  console.log('PASS: settings dialog holds the four sections, audience labels drop whole sources and blocked words hide stories without refetching, services section folds and is remembered, saved websites flow into the dialog, Stop using excludes each engine, all disabled engines remain off, RSS works, stale cache ignored, reload preserves selection, search-only selection has no fallback.');
 }finally{await browser.close();}

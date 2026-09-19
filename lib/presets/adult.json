@@ -1,0 +1,52 @@
+{
+  "topics": [
+    {
+      "name": "Trump",
+      "keywords": "Trump"
+    },
+    {
+      "name": "Anthropic",
+      "keywords": "Anthropic, Claude, Dario Amodei, Mythos"
+    },
+    {
+      "name": "OpenAI",
+      "keywords": "OpenAI, Sam Altman, Astra"
+    },
+    {
+      "name": "AI Governance",
+      "keywords": "AI Governance"
+    },
+    {
+      "name": "Gen AI",
+      "keywords": "Deepseek, Gemini, Perplexity, KIMI, Google Deepmind, Meta Llama,"
+    },
+    {
+      "name": "Elon Musk",
+      "keywords": "Elon Musk, SpaceX, Grok, Tesla, xAI, Neuralink"
+    }
+  ],
+  "articles": [],
+  "sites": [],
+  "starterSitesVersion": 4,
+  "removedSources": [],
+  "maxAudience": "general",
+  "blockedWords": [],
+  "format": "mynews-settings",
+  "version": 1,
+  "exportedAt": "2026-09-19T10:06:34.649Z",
+  "fontSize": 14,
+  "sources": [
+    "bing",
+    "google",
+    "hackernews",
+    "service:apnews.com",
+    "service:arstechnica.com",
+    "service:futurism.com",
+    "service:bbc.co.uk",
+    "service:reuters.com",
+    "service:theguardian.com",
+    "service:aljazeera.com",
+    "service:channelnewsasia.com",
+    "service:cbc.ca"
+  ]
+}

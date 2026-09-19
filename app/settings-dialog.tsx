@@ -27,6 +27,7 @@ export default function SettingsDialog(props:{
  sources:string[];onSourcesChange:(next:string[])=>void;
  removedSources:string[];onRemovedSourcesChange:(next:string[])=>void;
  maxAudience:Audience;blockedWords:string[];onSaveFilters:(next:{maxAudience:Audience;blockedWords:string[]})=>Promise<void>|void;
+ onClearSources:()=>void;
  fontSize:number;libraryReady:boolean;onApplyBackup:(backup:SettingsBackup)=>void;
 }){
  const [busy]=useState(false);
@@ -40,7 +41,7 @@ export default function SettingsDialog(props:{
    {props.tab==='topics'&&<TopicsPanel topics={props.topics} onSave={props.onSaveTopics} onDone={close}/>}
    {props.tab==='sites'&&<SitesPanel sites={props.sites} onChange={props.onSitesChange} keywords={props.keywords} sources={props.sources} onSourcesChange={props.onSourcesChange} removedSources={props.removedSources} onRemovedSourcesChange={props.onRemovedSourcesChange}/>}
    {props.tab==='filters'&&<FiltersPanel sites={props.sites} removedSources={props.removedSources} maxAudience={props.maxAudience} blockedWords={props.blockedWords} onSave={props.onSaveFilters} onDone={close}/>}
-   {props.tab==='backup'&&<SettingsManager fontSize={props.fontSize} ready={props.libraryReady} onApply={props.onApplyBackup} onDone={close}/>}
+   {props.tab==='backup'&&<SettingsManager onClearTopics={()=>props.onSaveTopics([])} onClearSources={props.onClearSources} fontSize={props.fontSize} ready={props.libraryReady} onApply={props.onApplyBackup} onDone={close}/>}
   </DialogContent>
  </Dialog>;
 }
