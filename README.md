@@ -51,7 +51,7 @@ Comma-separated keywords are combined with OR. **Stories are fetched only when y
 
 ## Reading layout
 
-The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. **Hide excerpt**, beside Refresh news, drops the body text from every card and leaves the headline and its source line, so the cards collapse to a fraction of their height and far more of them fit on screen. Press it again to bring the text back. The choice is remembered in this browser and travels in settings backups, alongside the service-section collapse preference. Read more is hidden while excerpts are, since there is nothing on the card for it to expand into.
+The Text size slider (12–24px), A−/A+ buttons, and Reset control resize both article text and card widths. **Hide excerpt**, beside Refresh news, drops the body text from every card and leaves the headline and its source line, so the cards collapse to a fraction of their height and far more of them fit on screen. Press it again to bring the text back. The choice is remembered in this browser and travels in settings backups, alongside the service-section collapse preference. Read more remains available in headline-only mode and the reading list.
 
 An info icon beside Reset says what it touches: the text size only, back to 16px. Topics, source sites, the reading list, the saved Settings ID and the stored headlines are unaffected. Smaller text fits more columns automatically; the grid fills the viewport without a maximum column count. The preference is remembered in this browser. Keyword Topics, Source sites and Save settings are pages of one **Settings** dialog, reached from the button in the masthead, so the page above the stories shows news rather than its own configuration. Each page leads with its actions and flows into the dialog's own scrollbar rather than scrolling inside a box.
 
@@ -108,11 +108,11 @@ Card body text sits below the reading size and scrolls within the card, so a lon
 
 ### Read more
 
-Cards outside the reading list carry a **Read more** button. It asks the Worker to read that one article and return up to 250 words of it, then shows that in place of the teaser. Nothing is fetched until a reader presses it, so a refresh stays as fast as before.
+Every card has **Read more**, opening a scrollable reader with all extractable article text, paragraph breaks, and the original article link. Refresh still fetches only feed excerpts. There is no 250-word cap on the reader.
 
-The Worker validates the address the same way it validates a feed — public address, http or https only — reads at most 600 KB, drops scripts, navigation, headers, footers and asides, prefers the page's `<article>` or `<main>` element, and keeps the paragraphs. Pages with too little readable text fall back to their own meta description, and a page that returns nothing usable reports that rather than showing an empty card.
+The Worker validates public addresses and redirects, reads at most 2 MB of page HTML, and extracts visible paragraphs, headings, and lists from article/main elements. Oversized responses fail explicitly instead of silently truncating. Metadata teasers are never passed off as full text. Restricted, blocked, JavaScript-only, news-index, and otherwise unreadable pages show a visible explanation. Some publishers expose only partial bodies; the reader states that completeness cannot always be verified.
 
-Each result is stored in `article_summaries` keyed by a hash of the URL, so the second reader to open the same link gets it instantly and the publisher is not asked twice. Paywalled and bot-blocked publishers will fail; that is reported on the button and the card keeps its original teaser.
+Available text is cached in the existing article_summaries table under a versioned URL hash, keeping old 250-word cache entries separate. Access restrictions are not bypassed.
 
 **Sources** lists everything a story can come from — Bing News, Google News RSS, Hacker News (Algolia), and every saved site — and any combination can be selected at once. The selection is remembered in this browser.
 

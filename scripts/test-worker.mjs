@@ -117,6 +117,9 @@ globalThis.fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url === 'https://news.example/story') {articleFetches++; return new Response(articlePage);}
   if (url === 'https://news.example/paywalled') {articleFetches++; return new Response('nope', {status: 403});}
+  if (url === 'https://news.example/teaser') return new Response('<meta name="description" content="'+'preview '.repeat(80)+'">');
+  if (url === 'https://news.example/restricted') return new Response('<script type="application/ld+json">{"isAccessibleForFree":false}</script>'+articlePage);
+  if (url === 'https://news.example/large') return new Response(articlePage+' '.repeat(2000000));
   if (url === 'https://news.example/empty') {articleFetches++; return new Response('<html><body><article></article></body></html>');}
   return realFetch2(input, init);
 };
@@ -126,7 +129,9 @@ const read = await article('https://news.example/story');
 assert.equal(read.status, 200);
 const readBody = await read.json();
 assert.equal(readBody.cached, false);
-assert.equal(readBody.words, 250, 'capped at 250 words');
+assert.equal(readBody.words, 360, 'all article words retained');
+assert.ok(readBody.summary.endsWith('para11word29'), 'last paragraph retained');
+assert.ok(readBody.summary.includes('\n\n'), 'paragraph boundaries retained');
 assert.ok(readBody.summary.startsWith('para0word0'), 'article body, not the nav');
 assert.ok(!readBody.summary.includes('Navigation clutter'), 'nav is dropped');
 assert.ok(!readBody.summary.includes('Footer boilerplate'), 'footer is dropped');
@@ -140,6 +145,10 @@ assert.equal(articleFetches, fetchesAfterFirst, 'a cached article is not re-fetc
 // Failures are reported, not cached as empty.
 assert.equal((await article('https://news.example/paywalled')).status, 502);
 assert.equal((await article('https://news.example/empty')).status, 422);
+
+assert.equal((await article('https://news.example/teaser')).status,422,'metadata is not full text');
+assert.equal((await article('https://news.example/restricted')).status,422,'restricted article is reported');
+assert.equal((await article('https://news.example/large')).status,502,'oversized page is not silently truncated');
 
 // The same address guards as feeds apply.
 const beforeGuards = articleFetches;

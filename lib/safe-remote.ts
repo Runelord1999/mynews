@@ -11,7 +11,7 @@ export function publicHttpUrl(value: string) {
  return url;
 }
 
-export async function readRemote(url: string, maxBytes = 1500000, timeoutMs = 12000) {
+export async function readRemote(url: string, maxBytes = 1500000, timeoutMs = 12000, rejectOversize = false) {
  let target=publicHttpUrl(url).href;
  const signal=AbortSignal.timeout(timeoutMs);
  let response:Response;
@@ -29,7 +29,7 @@ export async function readRemote(url: string, maxBytes = 1500000, timeoutMs = 12
  while (true) {
   const {done, value} = await reader.read(); if (done) break;
   size += value.length;
-  if (size > maxBytes) {await reader.cancel(); break;}
+  if (size > maxBytes) {await reader.cancel(); if(rejectOversize)throw Error('Article page is too large to retrieve completely. Open the original article.'); break;}
   text += decoder.decode(value, {stream: true});
  }
  return text + decoder.decode();
