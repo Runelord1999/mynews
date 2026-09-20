@@ -12,6 +12,7 @@ await page.getByRole('button',{name:'Read more',exact:true}).click();
 await page.locator('.article-reader-body').getByText('Paragraph 29',{exact:false}).waitFor();
 assert.ok(await page.locator('.article-reader-body').evaluate(e=>e.scrollHeight>e.clientHeight),'long articles scroll');
 assert.equal(await page.locator('.story-link p').textContent(),'Short card excerpt');
+await page.locator('.article-reader').evaluate(async e=>{await Promise.all(e.getAnimations().map(a=>a.finished));});
 await page.screenshot({path:'../article-reader-mobile.png'});
 await page.keyboard.press('Escape');
 fail=true;await page.reload();
