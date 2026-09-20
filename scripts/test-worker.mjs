@@ -77,6 +77,34 @@ assert.equal((await discover('not a url')).status, 400);
 assert.equal(discoverFetches, beforeDiscover, 'a refused address makes no request');
 globalThis.fetch = realFetch1;
 
+// Dynamic suggestions use all requested topics and exclude existing/default sources.
+const realSuggestFetch=globalThis.fetch;const searchRequests=[];
+globalThis.fetch=async input=>{
+ const url=new URL(typeof input==='string'?input:input.url);searchRequests.push(url);
+ const q=url.searchParams.get('q')||'';
+ const host=q.includes('cycling')?'cycling.example':'bread.example';
+ return new Response('<rss><channel><item><title>Relevant story</title><link>https://news.google.com/story</link><source url="https://'+host+'">New Publisher</source></item><item><title>Old</title><link>https://existing.example/post</link></item><item><title>Default BBC</title><link>https://bbc.com/story</link></item></channel></rss>');
+};
+const suggest=(body,extra={})=>worker.fetch(new Request('https://api.test/api/suggest',{method:'POST',headers:headers(extra),body:JSON.stringify(body)}),env());
+const suggestionInput={topics:[{name:'Cycling',keywords:'cycling races'},{name:'Bread',keywords:'sourdough'}],sites:[{url:'https://existing.example/'}]};
+const recommendations=await (await suggest(suggestionInput)).json();
+assert.equal(recommendations.candidates.length,2,'new publishers outside the old fixed list');
+assert.equal(searchRequests.length,4,'both indexes search both topics');
+assert.ok(searchRequests.every(u=>!u.href.includes('existing.example')),'existing sites are used for exclusion, not sent to indexes');
+assert.deepEqual(recommendations.topicsSearched,['Cycling','Bread']);
+assert.equal((await suggest({...suggestionInput,topics:[]})).status,400);
+assert.equal((await suggest(suggestionInput,{Origin:'https://evil.test'})).status,403);
+limiterAllows=false;assert.equal((await suggest(suggestionInput)).status,429);limiterAllows=true;
+globalThis.fetch=async input=>{const url=String(input);if(url.includes('bing.com'))return new Response('',{status:503});return new Response('<rss><channel></channel></rss>');};
+assert.equal((await (await suggest(suggestionInput)).json()).partial,true,'partial search failures are reported');
+globalThis.fetch=async()=>new Response('',{status:503});assert.equal((await suggest(suggestionInput)).status,502);
+// A feed redirect is validated before the Worker follows it.
+let redirectReads=0;
+globalThis.fetch=async()=>{redirectReads++;return new Response(null,{status:302,headers:{Location:'http://127.0.0.1/private'}});};
+const redirectFeed=await worker.fetch(new Request('https://api.test/api/feed?provider=sitefeed&feed=https%3A%2F%2Fpublic.example%2Ffeed'),env());
+assert.equal(redirectFeed.status,502);assert.equal(redirectReads,1,'private redirect target is never requested');
+globalThis.fetch=realSuggestFetch;
+
 // On-demand article reads: fetched once, then served from the cache.
 const articlePage = `<html><head><meta property="og:description" content="Meta fallback"/></head><body>
  <nav><p>${'Navigation clutter that is long enough to survive the length filter. '.repeat(2)}</p></nav>

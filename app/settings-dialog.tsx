@@ -39,7 +39,7 @@ export default function SettingsDialog(props:{
     <button key={id} role="tab" aria-selected={props.tab===id} className={'settings-tab '+(props.tab===id?'is-on':'')} onClick={()=>props.onTabChange(id)}><Icon size={15}/>{label}</button>
    )}</div>
    {props.tab==='topics'&&<TopicsPanel topics={props.topics} onSave={props.onSaveTopics} onDone={close}/>}
-   {props.tab==='sites'&&<SitesPanel sites={props.sites} onChange={props.onSitesChange} keywords={props.keywords} sources={props.sources} onSourcesChange={props.onSourcesChange} removedSources={props.removedSources} onRemovedSourcesChange={props.onRemovedSourcesChange}/>}
+   {props.tab==='sites'&&<SitesPanel topics={props.topics} maxAudience={props.maxAudience} sites={props.sites} onChange={props.onSitesChange} keywords={props.keywords} sources={props.sources} onSourcesChange={props.onSourcesChange} removedSources={props.removedSources} onRemovedSourcesChange={props.onRemovedSourcesChange}/>}
    {props.tab==='filters'&&<FiltersPanel sites={props.sites} removedSources={props.removedSources} maxAudience={props.maxAudience} blockedWords={props.blockedWords} onSave={props.onSaveFilters} onDone={close}/>}
    {props.tab==='backup'&&<SettingsManager onClearTopics={()=>props.onSaveTopics([])} onClearSources={props.onClearSources} fontSize={props.fontSize} ready={props.libraryReady} onApply={props.onApplyBackup} onDone={close}/>}
   </DialogContent>

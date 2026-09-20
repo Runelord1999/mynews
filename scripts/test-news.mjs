@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { parseFeed, safeUrl, summarise, allSources, defaultSources, siteSourceId, engineIds, services, publishers, sourceHost, matchTopic, topicQueryGroups, audiences, audienceRank, audienceAllows, siteAudience, isAudience, parseBlockedWords, blockedWordsText, blockedBy } from '../lib/news.ts';
-import { suggestedSites } from '../lib/suggested-sites.ts';
+import {build} from 'esbuild';
+const suggestionBuild=await build({entryPoints:['lib/suggested-sites.ts'],bundle:true,platform:'node',format:'esm',write:false});
+const {sourceQuery,searchPublishers,rankPublishers}=await import('data:text/javascript;base64,'+Buffer.from(suggestionBuild.outputFiles[0].text).toString('base64'));
 const example = '<rss><item><title>A &amp; B</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Farticle</link><description>&lt;b&gt;Useful&lt;/b&gt; excerpt</description><News:Source>Example</News:Source></item><item><title>Bad</title><link>javascript:alert(1)</link></item></rss>';
 const parsed = parseFeed(example, 'OpenAI');
 assert.equal(parsed.length, 1);
@@ -80,17 +82,20 @@ assert.deepEqual(topicQueryGroups([{name: 'One', keywords: 'alpha, beta'}]), ['a
 // A single topic longer than the budget is truncated rather than rejected.
 assert.ok(topicQueryGroups([{name: 'Long', keywords: Array.from({length: 40}, (_, i) => 'termtermterm' + i).join(', ')}]).every(q => q.length <= 280));
 
-// Suggested sources are well-formed before anything tries to read them.
-assert.ok(suggestedSites.length >= 10, 'enough candidates to cover the usual topics');
-for (const site of suggestedSites) {
-  assert.ok(site.name && site.covers, site.name + ' says what it covers');
-  assert.equal(safeUrl(site.url), new URL(site.url).href, site.name + ' has a usable site address');
-  assert.ok(site.feedUrl, site.name + ' names a feed');
-  assert.equal(safeUrl(site.feedUrl), new URL(site.feedUrl).href, site.name + ' has a usable feed address');
-  assert.ok(['http:', 'https:'].includes(new URL(site.feedUrl).protocol));
-}
-assert.equal(new Set(suggestedSites.map(s => s.feedUrl)).size, suggestedSites.length, 'no duplicate feeds');
-assert.equal(new Set(suggestedSites.map(s => s.name)).size, suggestedSites.length, 'no duplicate names');
+// Discover new publishers from live search records, outside any predefined list.
+const topicA={name:'Cycling',keywords:'cycling races, bicycles'};
+const topicB={name:'Baking',keywords:'sourdough bread'};
+assert.equal(sourceQuery(topicA),'"cycling races" OR "bicycles"');
+const candidateXml='<rss><item><title>Cycling results</title><link>https://news.google.com/rss/articles/123</link><source url="https://new-cycling.example">New Cycling</source></item><item><title>Existing coverage</title><link>https://www.existing.example/post</link></item><item><title>Private</title><link>http://127.0.0.1/post</link></item></rss>';
+const newPublishers=searchPublishers(candidateXml,topicA,['existing.example']);
+assert.equal(newPublishers.length,1);assert.equal(newPublishers[0].url,'https://new-cycling.example/');
+assert.deepEqual(newPublishers[0].topics,['Cycling']);
+assert.equal(searchPublishers(candidateXml,topicA,['new-cycling.example','existing.example']).length,0);
+assert.equal(searchPublishers('<rss><item><title>Bad</title><link>https://news.google.com/a</link><source url="http://192.168.1.1/">Bad</source></item></rss>',topicA,[]).length,0);
+const bakery={name:'Bakery',url:'https://bread.example/',topics:['Baking'],sample:'Bread story',sampleUrl:'https://bread.example/post',matches:1};
+const ranked=rankPublishers([...newPublishers,...newPublishers,bakery],[topicA,topicB]);
+assert.equal(ranked.length,2);assert.ok(ranked.some(c=>c.topics.includes('Baking')));assert.equal(ranked.find(c=>c.name==='New Cycling').matches,2);
+assert.equal(rankPublishers(Array.from({length:40},(_,i)=>({...bakery,url:'https://bread'+i+'.example/'})),[topicB]).length,12);
 
 // Audience labels. Three tiers, most restrictive first, and everything built
 // in is General: a whole-web index cannot be held to an audience.
@@ -142,11 +147,5 @@ assert.equal(blockedBy(story('A gun was found'), ['gun']), 'gun');
 assert.equal(blockedBy(story('Evidence of a war crime'), ['war crime']), 'war crime', 'a phrase matches as a phrase');
 assert.equal(blockedBy(story('A crime of war'), ['war crime']), '', 'the phrase is not matched out of order');
 assert.equal(blockedBy(story('Anything at all'), []), '', 'no list, nothing hidden');
-
-// Suggested sources all carry a label, and a Children filter leaves something
-// to read rather than an empty page.
-assert.ok(suggestedSites.every(s => isAudience(s.audience)), 'every suggestion says who it is written for');
-assert.ok(suggestedSites.some(s => s.audience === 'children'), 'a Children filter has something to keep');
-assert.ok(suggestedSites.filter(s => audienceAllows('teen', s.audience)).length >= 3);
 
 console.log('PASS: RSS and Atom parsing, site hostnames, topic matching, query packing, source list and defaults, audience labels and whole-word blocked-word matching, full-text content:encoded summaries capped at 250 words, original publisher links, and unsafe URL rejection.');

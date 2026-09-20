@@ -90,6 +90,7 @@ export function feedEndpoint(){return apiBase()+'/api/feed';}
 export function settingsEndpoint(){return apiBase()+'/api/settings';}
 export function adminEndpoint(){return apiBase()+'/api/admin';}
 export function articleEndpoint(){return apiBase()+'/api/article';}
+export function suggestEndpoint(){return apiBase()+'/api/suggest';}
 export function discoverEndpoint(){return apiBase()+'/api/discover';}
 // Shown in error messages so a build pointed at the wrong backend is obvious.
 export function apiOrigin(){return apiBase()||location.origin;}

@@ -12,7 +12,17 @@ export function publicHttpUrl(value: string) {
 }
 
 export async function readRemote(url: string, maxBytes = 1500000, timeoutMs = 12000) {
- const response = await fetch(url, {signal: AbortSignal.timeout(timeoutMs), headers: {'User-Agent': 'Mynews reader (+https://runelord1999.github.io/mynews/)', Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'}});
+ let target=publicHttpUrl(url).href;
+ const signal=AbortSignal.timeout(timeoutMs);
+ let response:Response;
+ for(let hop=0;;hop++){
+  response=await fetch(target,{redirect:'manual',signal,headers:{'User-Agent':'Mynews reader (+https://runelord1999.github.io/mynews/)',Accept:'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'}});
+  if(![301,302,303,307,308].includes(response.status))break;
+  await response.body?.cancel();
+  const location=response.headers.get('Location');
+  if(!location||hop>=3)throw Error('Too many redirects');
+  target=publicHttpUrl(new URL(location,target).href).href;
+ }
  if (!response.ok) throw Error('Unavailable');
  const reader = response.body?.getReader(); if (!reader) throw Error('Empty response');
  let size = 0, text = ''; const decoder = new TextDecoder();

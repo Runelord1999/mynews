@@ -202,13 +202,27 @@ try{
  assert.equal(await page.locator('.service-row').count(),12);
  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-sources')))).length,12);
 
+ // The backend receives current topics/sites, not a predefined publisher list.
+ let suggestionInput;let suggestionRound=0;
+ await page.route('**/api/suggest',async route=>{
+  suggestionInput=route.request().postDataJSON();suggestionRound++;
+  await route.fulfill({json:{candidates:['A','B','C','Unavailable'].map(letter=>({name:'Topic publisher '+letter,url:'https://topic-'+letter.toLowerCase()+suggestionRound+'.example/',topics:suggestionInput.topics.map(t=>t.name),sample:'Relevant example headline '+letter,sampleUrl:'https://topic-'+letter.toLowerCase()+suggestionRound+'.example/story',matches:1}))}});
+ });
+ await page.route('**/api/discover',async route=>{
+  const {url}=route.request().postDataJSON();
+  await route.fulfill(url.includes('unavailable')?{status:404,json:{feeds:[]}}:{json:{feeds:[{url:url+'rss',items:4}]}});
+ });
  // Suggested sources are offered for confirmation, not added outright.
  const before=await page.locator('.saved-site-row').count();
  await page.getByRole('button',{name:'Add suggested sources',exact:true}).click();
  await page.getByRole('heading',{name:'Add these sources?',exact:true}).waitFor({timeout:90000});
  assert.equal(await page.locator('.saved-site-row').count(),before,'nothing is added until confirmed');
  const offeredCount=await page.locator('.suggestion-list [role=menuitemcheckbox]').count();
- assert.ok(offeredCount>1,'working feeds are offered');
+ assert.equal(offeredCount,3,'only verified feeds are offered');
+ assert.deepEqual(suggestionInput.topics,await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-library-v1')).topics));
+ assert.deepEqual(suggestionInput.sites,await page.evaluate(()=>JSON.parse(localStorage.getItem('mynews-library-v1')).sites.map(s=>({url:s.url}))));
+ await page.getByText('Example coverage: Relevant example headline A',{exact:true}).waitFor();
+ assert.equal(await page.getByLabel('Audience for suggestion Topic publisher A',{exact:true}).inputValue(),'general');
  await page.locator('.suggestion-list [role=menuitemcheckbox]').first().click();
  await page.getByRole('button',{name:'Add '+(offeredCount-1)+' sources',exact:true}).click();
  assert.equal(await page.locator('.saved-site-row').count(),before+offeredCount-1,'only the ticked ones are added');
@@ -220,6 +234,24 @@ try{
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
  assert.equal(await page.locator('.saved-site-row').count(),now,'cancel adds nothing');
  await page.getByText(/^\d+ of \d+ in use$/).first().waitFor();
+
+ // A failed lookup is explained and does not offer stale results.
+ await page.route('**/api/suggest',route=>route.abort());
+ await page.getByRole('button',{name:'Add suggested sources',exact:true}).click();
+ await page.getByText('Could not reach source discovery. Try again.',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('heading',{name:'Add these sources?',exact:true}).count(),0);
+
+ // Cancel a pending lookup before its response; no stale offer may open.
+ let releaseLookup;let lookupStarted;
+ const startedLookup=new Promise(resolve=>{lookupStarted=resolve;});
+ const heldLookup=new Promise(resolve=>{releaseLookup=resolve;});
+ await page.route('**/api/suggest',async route=>{lookupStarted();await heldLookup;try{await route.fulfill({json:{candidates:[]}});}catch{/* browser cancelled the request */}});
+ await page.getByRole('button',{name:'Add suggested sources',exact:true}).click();
+ await startedLookup;
+ await page.getByRole('button',{name:'Cancel lookup',exact:true}).click();
+ releaseLookup();
+ await page.getByText('Source lookup cancelled. No sites were added.',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('heading',{name:'Add these sources?',exact:true}).count(),0);
 
  // Bulk actions are scoped to this browser, require confirmation, and persist.
  await page.getByRole('tab',{name:'Save settings',exact:true}).click();
