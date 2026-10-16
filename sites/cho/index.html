@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cho — Omakase, Chulia Street, Singapore</title>
+  <meta name="description" content="Cho is an intimate Japanese omakase counter by Chef YK Chong at 63 Chulia Street, Singapore. Lunch and dinner omakase, Monday to Saturday.">
+  <meta name="theme-color" content="#14110f">
+  <meta property="og:title" content="Cho — Omakase, Singapore">
+  <meta property="og:description" content="An intimate omakase counter in the CBD by Chef YK Chong.">
+  <meta property="og:type" content="restaurant">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Noto+Serif+JP:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "Cho",
+    "servesCuisine": ["Japanese", "Omakase", "Sushi"],
+    "priceRange": "$$$",
+    "telephone": "+65 6223 1276",
+    "url": "https://cho.restaurant/",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "63 Chulia Street, #01-03 OCBC Centre",
+      "addressLocality": "Singapore",
+      "postalCode": "049514",
+      "addressCountry": "SG"
+    },
+    "openingHoursSpecification": [
+      {"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "11:30", "closes": "14:30"},
+      {"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "17:30", "closes": "21:30"}
+    ],
+    "acceptsReservations": true
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav" id="top">
+    <a class="brand" href="#top" aria-label="Cho, home">
+      <span>Cho</span>
+    </a>
+    <nav aria-label="Primary">
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+      <ul id="nav-links">
+        <li><a href="#story">Story</a></li>
+        <li><a href="#omakase">Omakase</a></li>
+        <li><a href="#visit">Visit</a></li>
+        <li><a class="btn btn-small" href="#reserve">Reserve</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Omakase · Chulia Street · Singapore</p>
+        <h1>Trust the chef.<br><em>Taste the season.</em></h1>
+        <p class="lede">An intimate counter in the heart of the CBD, where Chef YK Chong prepares seasonal Japanese courses in front of you, one at a time.</p>
+        <div class="hero-cta">
+          <a class="btn" href="#reserve">Reserve a seat</a>
+          <a class="btn btn-ghost" href="#omakase">See the menus</a>
+        </div>
+        <p class="status" id="open-status" aria-live="polite"></p>
+      </div>
+      <div class="hero-mark" aria-hidden="true">お任せ</div>
+    </section>
+
+    <section class="story" id="story">
+      <div class="col">
+        <p class="eyebrow">The chef</p>
+        <h2>Six years in Bahrain.<br>One counter in Singapore.</h2>
+      </div>
+      <div class="col">
+        <p>Before Cho, Chef YK Chong led the kitchen at Bushido, an award-winning Japanese restaurant in Bahrain. Cho is the room he built to cook the way he wants to: a short counter, seasonal fish, and courses paced to the guest in front of him.</p>
+        <p>There is no à la carte. You choose a menu, sit down, and let the chef take it from there.</p>
+        <dl class="facts">
+          <div><dt>Format</dt><dd>Counter omakase</dd></div>
+          <div><dt>Service</dt><dd>Lunch &amp; dinner, Mon–Sat</dd></div>
+          <div><dt>Location</dt><dd>OCBC Centre, Raffles Place</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="omakase" id="omakase">
+      <div class="section-head">
+        <p class="eyebrow">Menus</p>
+        <h2>Omakase</h2>
+        <div class="tabs" role="tablist" aria-label="Service">
+          <button role="tab" aria-selected="true" aria-controls="panel-lunch" id="tab-lunch">Lunch</button>
+          <button role="tab" aria-selected="false" aria-controls="panel-dinner" id="tab-dinner" tabindex="-1">Dinner</button>
+        </div>
+      </div>
+
+      <div class="panel" role="tabpanel" id="panel-lunch" aria-labelledby="tab-lunch">
+        <article class="menu-card featured">
+          <header><h3>Lunch Omakase</h3><p class="price">S$78<span>++</span></p></header>
+          <p class="time">11:30 – 14:30</p>
+          <ol class="courses">
+            <li>Appetiser</li><li>Assorted sashimi</li><li>Main</li><li>Soup</li><li>Dessert</li>
+          </ol>
+          <a class="btn btn-block" href="#reserve" data-service="lunch" data-menu="Lunch Omakase">Book lunch</a>
+        </article>
+        <p class="note">A full omakase progression at a CBD lunch price.</p>
+      </div>
+
+      <div class="panel" role="tabpanel" id="panel-dinner" aria-labelledby="tab-dinner" hidden>
+        <div class="menu-grid">
+          <article class="menu-card">
+            <header><h3>Dinner I</h3><p class="price">S$128<span>++</span></p></header>
+            <p class="time">Dinner</p>
+            <p>Seasonal appetisers, sashimi, cooked courses and a sushi sequence.</p>
+            <a class="btn btn-block btn-ghost" href="#reserve" data-service="dinner" data-menu="Dinner I">Book</a>
+          </article>
+          <article class="menu-card featured">
+            <header><h3>Dinner II</h3><p class="price">S$168<span>++</span></p></header>
+            <p class="time">Dinner</p>
+            <p>More courses and premium cuts, plus the chef's seasonal specials.</p>
+            <a class="btn btn-block" href="#reserve" data-service="dinner" data-menu="Dinner II">Book</a>
+          </article>
+          <article class="menu-card">
+            <header><h3>Dinner III</h3><p class="price">S$238<span>++</span></p></header>
+            <p class="time">Dinner</p>
+            <p>The full progression with the best of the day's catch.</p>
+            <a class="btn btn-block btn-ghost" href="#reserve" data-service="dinner" data-menu="Dinner III">Book</a>
+          </article>
+        </div>
+      </div>
+
+      <p class="fine">Prices exclude 10% service charge and prevailing GST. Courses change with the season and the day's catch. Tell us about allergies when you book.</p>
+    </section>
+
+    <section class="quotes" aria-label="What guests say">
+      <figure>
+        <blockquote>“Every slice is a burst of freshness and delicate flavours.”</blockquote>
+        <figcaption>Guest review</figcaption>
+      </figure>
+      <figure>
+        <blockquote>“The lunch omakase is a reasonable price for this quality in the CBD.”</blockquote>
+        <figcaption>Guest review</figcaption>
+      </figure>
+    </section>
+
+    <section class="reserve" id="reserve">
+      <div class="col">
+        <p class="eyebrow">Reservations</p>
+        <h2>Reserve a seat</h2>
+        <p>Counter seats are limited. Send a request and we confirm by phone or WhatsApp. For same-day bookings or large groups, call us.</p>
+        <a class="phone" href="tel:+6562231276">+65 6223 1276</a>
+      </div>
+      <form class="col form" id="booking" novalidate>
+        <div class="row">
+          <label>Date<input type="date" name="date" required></label>
+          <label>Service
+            <select name="service" required>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label>Time<select name="time" required></select></label>
+          <label>Guests<select name="guests" required></select></label>
+        </div>
+        <label>Menu<select name="menu" required></select></label>
+        <div class="row">
+          <label>Name<input type="text" name="name" autocomplete="name" required></label>
+          <label>Mobile<input type="tel" name="phone" autocomplete="tel" placeholder="+65" required></label>
+        </div>
+        <label>Allergies or occasion <span class="opt">(optional)</span><textarea name="notes" rows="2"></textarea></label>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <button class="btn btn-block" type="submit">Send request via WhatsApp</button>
+        <p class="fine">Opens WhatsApp with your request filled in. Your booking is confirmed only once we reply.</p>
+      </form>
+    </section>
+
+    <section class="visit" id="visit">
+      <div class="col">
+        <p class="eyebrow">Visit</p>
+        <h2>Find us</h2>
+        <address>
+          63 Chulia Street, #01-03<br>
+          OCBC Centre, Singapore 049514
+        </address>
+        <p class="muted">A short walk from Raffles Place MRT.</p>
+        <a class="link" href="https://www.google.com/maps/search/?api=1&query=Cho+Omakase+63+Chulia+Street+Singapore+049514" target="_blank" rel="noopener">Open in Google Maps →</a>
+      </div>
+      <div class="col">
+        <table class="hours" aria-label="Opening hours">
+          <tbody id="hours-body"></tbody>
+        </table>
+        <p class="muted">Closed Sundays and selected public holidays.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="brand"><span>Cho</span></span>
+    <span>63 Chulia St, #01-03, Singapore 049514 · <a href="tel:+6562231276">+65 6223 1276</a></span>
+    <span>© <span id="year"></span> Cho Omakase</span>
+  </footer>
+
+  <a class="mobile-cta btn" href="#reserve">Reserve</a>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
